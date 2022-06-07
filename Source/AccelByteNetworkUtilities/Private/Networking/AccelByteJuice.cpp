@@ -13,23 +13,33 @@
 #include "HAL/UnrealMemory.h"
 
 #define DO_TASK(task) FFunctionGraphTask::CreateAndDispatchWhenReady(task, TStatId(), nullptr);
+#define MAX_ADDRESS_LENGTH 256
 
 /**
  * Registered to LibJuice Log
  */
 static void LogCallback(juice_log_level_t level, const char *message)
 {
-	UE_LOG_ABNET(Verbose, TEXT("JUICE LOG : %hs"), message);
+	UE_LOG_ABNET(Log, TEXT("JUICE LOG : %hs"), message);
 }
 
 AccelByteJuice::AccelByteJuice(const FString& PeerId): AccelByteICEBase(PeerId)
 {
-	juice_set_log_handler(LogCallback);
-#if UE_BUILD_DEBUG || UE_BUILD_DEVELOPMENT
-	juice_set_log_level(JUICE_LOG_LEVEL_VERBOSE);
-#else
-	juice_set_log_level(JUICE_LOG_LEVEL_NONE);
-#endif
+	juice_set_log_handler(LogCallback);	
+
+	FString ParamValue;
+	if(FParse::Value(FCommandLine::Get(), TEXT("iceforcerelay"), ParamValue))
+	{
+		bIsForceIceUsingRelay = true;
+	}
+	if(FParse::Value(FCommandLine::Get(), TEXT("juiceverbose"), ParamValue))
+	{
+		juice_set_log_level(JUICE_LOG_LEVEL_VERBOSE);
+	}
+	else
+	{
+		juice_set_log_level(JUICE_LOG_LEVEL_NONE);
+	}
 }
 
 void AccelByteJuice::OnSignalingMessage(const FString& Message)
@@ -41,42 +51,16 @@ void AccelByteJuice::OnSignalingMessage(const FString& Message)
 	HandleMessage(Json);
 }
 
-bool AccelByteJuice::RequestConnect()
+bool AccelByteJuice::RequestConnect(const FString &ServerUrl, int ServerPort, const FString &Username, const FString &Password)
 {
-	bIsInitiator = true;
-	//TODO: The turn server should get from our Qos server. This code can be move to base class.
-	/*
-	 * We don't have STUN server config here because we put it only 1 as TURN server
-	 * the TURN server can act as both TURN and STUN server
-	 * so the TURN server is mandatory here
-	 */
-	FString TurnHost;
-	int TurnPort = 0;
-	FString TurnUserName;
-	FString TurnPassword;
-	FString TurnError;
-	if(!GConfig->GetString(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerUrl"), TurnHost, GEngineIni))
-	{
-		UE_LOG_ABNET(Error, TEXT("TurnServerUrl was missing in DefaultEngine.ini"));
-        return false;
-	}
-	
-	if(!GConfig->GetInt(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerPort"), TurnPort, GEngineIni))
-	{
-		UE_LOG_ABNET(Error, TEXT("TurnServerPort was missing in DefaultEngine.ini"));
-		return false;
-	}
-	
-	// Username password possible empty if no authentication required on TURN server
-	GConfig->GetString(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerUsername"), TurnUserName, GEngineIni);
-	GConfig->GetString(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerPassword"), TurnPassword, GEngineIni);
+	bIsInitiator = true;	
 	
 	TSharedRef<FJsonObject> Json = MakeShared<FJsonObject>();
 	Json->SetStringField(TEXT("type"), TEXT("ice"));
-	Json->SetStringField(TEXT("host"), TurnHost);
-	Json->SetStringField(TEXT("username"), TurnUserName);
-	Json->SetStringField(TEXT("password"), TurnPassword);
-	Json->SetNumberField(TEXT("port"), TurnPort);	
+	Json->SetStringField(TEXT("host"), ServerUrl);
+	Json->SetStringField(TEXT("username"), Username);
+	Json->SetStringField(TEXT("password"), Password);
+	Json->SetNumberField(TEXT("port"), ServerPort);	
 	Json->SetStringField(TEXT("server_type"), TEXT("offer"));
 	if (Signaling->IsConnected())
 	{
@@ -84,9 +68,7 @@ bool AccelByteJuice::RequestConnect()
 		JsonToString(JsonString, Json);
 		const FString Base64String = FBase64::Encode(JsonString);
 		Signaling->SendMessage(PeerId, Base64String);
-		DO_TASK(([this, TurnHost, TurnUserName, TurnPassword, TurnPort]() {
-            CreatePeerConnection(TurnHost, TurnUserName, TurnPassword, TurnPort);
-        }));
+		CreatePeerConnection(ServerUrl, Username, Password, ServerPort);
 		return true;
 	}
 	return false;
@@ -155,7 +137,8 @@ void AccelByteJuice::CreatePeerConnection(const FString& Host, const FString &Us
 	TurnServerConfig[0].username = ConfigHelper.Username;
 	TurnServerConfig[0].password = ConfigHelper.Password;
 	memset(&JuiceConfig, 0, sizeof(JuiceConfig));
-	SetupCallback();	
+	SetupCallback();
+	JuiceConfig.concurrency_mode = JUICE_CONCURRENCY_MODE_THREAD;
 	JuiceConfig.turn_servers = TurnServerConfig;
 	JuiceConfig.turn_servers_count = 1;
 	JuiceConfig.user_ptr = this;
@@ -166,15 +149,12 @@ void AccelByteJuice::CreatePeerConnection(const FString& Host, const FString &Us
 #endif
 	JuiceAgent = juice_create(&JuiceConfig);
 
-	if(IsPeerReady())
+	SetupLocalDescription();
+	// Apply Session Description Protocol (SDP) from remote that is in queue
+	TSharedPtr<FJsonObject> Json;
+	if (SdpQueue.Dequeue(Json))
 	{
-		SetupLocalDescription();
-		// Apply Session Description Protocol (SDP) from remote that is in queue
-		TSharedPtr<FJsonObject> Json;
-		if (SdpQueue.Dequeue(Json))
-		{
-			HandleMessage(Json);
-		}
+		HandleMessage(Json);
 	}
 }
 
@@ -294,8 +274,12 @@ void AccelByteJuice::HandleMessage(TSharedPtr<FJsonObject> Json)
 		const bool bIsDescriptionReadyCopy = bIsDescriptionReady;
 		DescriptionReadyMutex.Unlock();
 		if(bIsDescriptionReadyCopy)
-		{			
+		{
 			const FString Candidate = Json->GetStringField(TEXT("candidate"));
+			if(bIsForceIceUsingRelay && !Candidate.Contains(TEXT("typ relay")))
+			{
+				return;
+			}
 			UE_LOG_ABNET(Log, TEXT("Set remote candidate : %s"), *Candidate);
 			DO_TASK(([JuiceAgent = this->JuiceAgent, Candidate]()
 			{
@@ -309,6 +293,13 @@ void AccelByteJuice::HandleMessage(TSharedPtr<FJsonObject> Json)
 			 */
 			CandidateQueue.Enqueue(Json);
 		}
+	}
+	else if (Type.Equals(TEXT("done")))
+	{
+		DO_TASK(([JuiceAgent = this->JuiceAgent]()
+		{
+			juice_set_remote_gathering_done(JuiceAgent);
+		}));
 	}
 }
 
@@ -341,6 +332,16 @@ void AccelByteJuice::JuiceStateChanged(juice_state_t State)
 	if(State == JUICE_STATE_CONNECTED)
 	{
 		bIsConnected = true;
+#ifndef PLATFORM_SWITCH
+		char localAddress[MAX_ADDRESS_LENGTH];
+		char remoteAddress[MAX_ADDRESS_LENGTH];
+		int result = juice_get_selected_addresses(JuiceAgent, localAddress, MAX_ADDRESS_LENGTH, remoteAddress, MAX_ADDRESS_LENGTH);
+		UE_LOG_ABNET(Log, TEXT("selected address: %d; local : %hs; remote: %hs"), result, localAddress, remoteAddress);
+		char localCandidate[MAX_ADDRESS_LENGTH];
+		char remoteCandidate[MAX_ADDRESS_LENGTH];
+		result = juice_get_selected_candidates(JuiceAgent, localCandidate, MAX_ADDRESS_LENGTH, remoteCandidate, MAX_ADDRESS_LENGTH);
+		UE_LOG_ABNET(Log, TEXT("selected candidate: %d; local : %hs; remote: %hs"), result, localCandidate, remoteCandidate);
+#endif
 		OnICEDataChannelConnectedDelegate.ExecuteIfBound(PeerId);
 	}
 	else if(State == JUICE_STATE_FAILED)
@@ -358,9 +359,14 @@ void AccelByteJuice::JuiceStateChanged(juice_state_t State)
 void AccelByteJuice::JuiceCandidate(const char* Candidate)
 {
 	UE_LOG_ABNET(Log, TEXT("Juice local candidate : %hs"), Candidate);
+	FString InCandidate(Candidate);
+	if(bIsForceIceUsingRelay && !InCandidate.Contains(TEXT("typ relay")))
+	{
+	    return;
+	}
 	TSharedRef<FJsonObject> Json = MakeShared<FJsonObject>();
 	Json->SetStringField(TEXT("type"), TEXT("candidate"));
-	Json->SetStringField(TEXT("candidate"), FString(Candidate));
+	Json->SetStringField(TEXT("candidate"), InCandidate);
 	FString JsonString;
 	JsonToString(JsonString, Json);
 	const FString Base64String = FBase64::Encode(JsonString);
@@ -370,6 +376,12 @@ void AccelByteJuice::JuiceCandidate(const char* Candidate)
 void AccelByteJuice::JuiceGatheringDone()
 {
 	UE_LOG_ABNET(Log, TEXT("Juice Gathering Done"));
+	TSharedRef<FJsonObject> Json = MakeShared<FJsonObject>();
+	Json->SetStringField(TEXT("type"), TEXT("done"));
+	FString JsonString;
+	JsonToString(JsonString, Json);
+	const FString Base64String = FBase64::Encode(JsonString);
+	Signaling->SendMessage(PeerId, Base64String);
 }
 
 void AccelByteJuice::JuiceDataRecv(const char* data, size_t size)

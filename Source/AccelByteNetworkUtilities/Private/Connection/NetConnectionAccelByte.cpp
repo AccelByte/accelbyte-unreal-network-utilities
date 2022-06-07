@@ -6,13 +6,15 @@
 #include "AccelByteNetworkUtilitiesConstant.h"
 #include "SocketAccelByte.h"
 #include "NetDriverAccelByte.h"
+#include "Networking/AccelByteNetworkManager.h"
 
 void UIpConnectionAccelByte::InitRemoteConnection(class UNetDriver* InDriver, class FSocket* InSocket, const FURL& InURL,
-	const class FInternetAddr& InRemoteAddr, EConnectionState InState, int32 InMaxPacket, int32 InPacketOverhead)
+                                                  const class FInternetAddr& InRemoteAddr, EConnectionState InState, int32 InMaxPacket, int32 InPacketOverhead)
 {
 	bIsICEConnection = static_cast<UIpNetDriverAccelByte*>(InDriver)->bICEConnectionsEnabled;
 	if (bIsICEConnection)
 	{
+		PeerId = InRemoteAddr.ToString(false);
 		/*
 		 * Disabled because the IP address passed here is not real IP Address, but AccelByteIpAddress
 		 * it has its own format of IP, please check IPAddressAccelByte
@@ -28,6 +30,8 @@ void UIpConnectionAccelByte::InitLocalConnection(class UNetDriver* InDriver, cla
 	bIsICEConnection = InURL.Host.StartsWith(ACCELBYTE_URL_PREFIX);
 	if (bIsICEConnection)
 	{
+		PeerId = InURL.Host;
+		PeerId.RemoveFromStart(ACCELBYTE_URL_PREFIX);
 		/*
 		* Disabled because the IP address passed here is not real IP Address, but AccelByteIpAddress
 		* it has its own format of IP, please check IPAddressAccelByte
@@ -39,5 +43,10 @@ void UIpConnectionAccelByte::InitLocalConnection(class UNetDriver* InDriver, cla
 
 void UIpConnectionAccelByte::CleanUp()
 {
+	if(bIsICEConnection)
+	{
+		// destroy the P2P connection here
+		AccelByteNetworkManager::Instance().ClosePeerConnection(PeerId);
+	}
 	Super::CleanUp();
 }

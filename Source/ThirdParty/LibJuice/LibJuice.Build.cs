@@ -13,6 +13,9 @@ public class LibJuice : ModuleRules
 	{
 		Type = ModuleType.External;
 
+		/*
+		 * Use platform string because Platform_PS5 not available on Unreal installed from Epic Launcher
+		 */
 		String PlatformString = Target.Platform.ToString().ToUpper();
 		
 		if (PlatformString == "WIN64")
@@ -122,13 +125,11 @@ public class LibJuice : ModuleRules
 			    Target.Configuration == UnrealTargetConfiguration.DebugGame)
 			{
 				RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "linux64/debug/libjuice.so"));
-				PublicLibraryPaths.Add(Path.Combine(ModuleDirectory, "linux64/debug/"));
 				PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "linux64/debug/libjuice.so"));
 			}
 			else
 			{
 				RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "linux64/release/libjuice.so"));
-				PublicLibraryPaths.Add(Path.Combine(ModuleDirectory, "linux64/release/"));
 				PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "linux64/release/libjuice.so"));
 			}
 			PublicDelayLoadDLLs.Add("libjuice.so");

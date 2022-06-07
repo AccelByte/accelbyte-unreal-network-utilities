@@ -10,11 +10,17 @@ public class AccelByteNetworkUtilities : ModuleRules
 		PrivateDefinitions.Add("ACCELBYTE_NETWORK_UTILITIES_PACKAGE=1");
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 
+		/*
+		 * Use platform string because Platform_PS5 not available on Unreal installed from Epic Launcher
+		 */
 		String PlatformString = Target.Platform.ToString().ToUpper();
+
+		if (PlatformString == "PS5")
+		{
+			bAllowConfidentialPlatformDefines = true;
+		}
 		
 		/*
-		 * The LibJuice precompiled library only for Win64, XboxGDK, XSX, PS4, and PS5
-		 * Other platform still not supported yet.
 		 * LibJuice is library that handle the nat punch connection.
 		 */
 		if (PlatformString == "WIN64" || 

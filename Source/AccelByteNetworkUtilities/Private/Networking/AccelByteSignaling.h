@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "Core/AccelByteMultiRegistry.h"
 #include "AccelByteSignalingBase.h"
 
 /*
@@ -12,12 +13,15 @@
 
 class AccelByteSignaling : public AccelByteSignalingBase
 {
-public:	
+public:
+	AccelByteSignaling(AccelByte::FApiClientPtr InApiClient);
 	virtual void Init() override;
 	virtual bool IsConnected() const override;
 	virtual void Connect() override;
 	virtual void SendMessage(const FString &PeerId, const FString &Message) override;
 
 private:
+	AccelByte::FApiClientPtr ApiClientPtr;
+	
 	void OnSignalingMessage(const FString &PeerId, const FString &Message);
 };

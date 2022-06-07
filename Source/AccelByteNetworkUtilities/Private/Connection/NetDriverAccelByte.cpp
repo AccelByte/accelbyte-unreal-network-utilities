@@ -89,10 +89,10 @@ bool UIpNetDriverAccelByte::InitListen(FNetworkNotify* InNotify, FURL& ListenURL
 {
 	ISocketSubsystem* SocketAccelByte = ISocketSubsystem::Get(ACCELBYTE_SUBSYSTEM);
 	FString ParamValue;
-	bool bIsICEEnabled = true;
-	if(FParse::Value(FCommandLine::Get(), TEXT("noaccelbyteice"), ParamValue))
+	bool bIsICEEnabled = false;
+	if (FParse::Value(FCommandLine::Get(), TEXT("dsaccelbyteice"), ParamValue))
 	{
-		bIsICEEnabled = false;
+		bIsICEEnabled = true;
 	}
 	if (SocketAccelByte && !ListenURL.HasOption(TEXT("bIsLanMatch")) && (!IsRunningDedicatedServer() || (IsRunningDedicatedServer() && bIsICEEnabled)))
 	{

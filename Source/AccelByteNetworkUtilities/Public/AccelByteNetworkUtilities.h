@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "Modules/ModuleManager.h"
+#include "Core/AccelByteMultiRegistry.h"
 
 class ACCELBYTENETWORKUTILITIES_API FAccelByteNetworkUtilitiesModule : public IModuleInterface
 {
@@ -22,9 +22,11 @@ public:
 	static FAccelByteNetworkUtilitiesModule& Get();
 	
 	/**
-	 * @brief Run the AccelByte network manager. This will prepare signaling and lobby ready to use.
+	 * @brief Setup the network manager before use
+	 *
+	 * @param InApiClientPtr ApiClient to use for the P2P connection
 	 */
-	void Run();
+	void Setup(AccelByte::FApiClientPtr InApiClientPtr);
 
 	/**
 	 * @brief Request to connect peer-to-peer to peer id

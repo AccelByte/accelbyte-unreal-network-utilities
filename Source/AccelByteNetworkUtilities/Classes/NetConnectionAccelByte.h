@@ -20,6 +20,7 @@ class UIpConnectionAccelByte : public UIpConnection
 	GENERATED_BODY()
 
 	bool bIsICEConnection = false;
+	FString PeerId;
 
 	//~ Begin UIpConnection Interface
 	virtual void InitRemoteConnection(class UNetDriver* InDriver, class FSocket* InSocket, const FURL& InURL, const class FInternetAddr& InRemoteAddr, EConnectionState InState, int32 InMaxPacket = 0, int32 InPacketOverhead = 0) override;

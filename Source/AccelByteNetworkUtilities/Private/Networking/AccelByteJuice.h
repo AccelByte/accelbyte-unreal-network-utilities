@@ -45,7 +45,7 @@ public:
 	/**
 	* @brief Request connect to PeerId
 	*/
-	virtual bool RequestConnect() override;
+	virtual bool RequestConnect(const FString &ServerUrl, int ServerPort, const FString &Username, const FString &Password) override;
 
 	/**
 	* @brief Send data to connected peer data channel
@@ -76,6 +76,8 @@ private:
 	juice_agent_t *JuiceAgent = nullptr;
 	// config for the Juice instance
 	juice_config_t JuiceConfig;
+
+	bool bIsForceIceUsingRelay = false;
 
 	FCriticalSection DescriptionReadyMutex;
 	/*

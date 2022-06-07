@@ -65,7 +65,7 @@ public:
 	/**
 	* @brief Request connect to PeerId
 	*/
-	virtual bool RequestConnect() = 0;
+	virtual bool RequestConnect(const FString &ServerUrl, int ServerPort, const FString &Username, const FString &Password) = 0;
 
 	/**
 	* @brief Send data to connected peer data channel
@@ -197,7 +197,7 @@ public:
 	{
 	}
 	
-	virtual bool RequestConnect() override
+	virtual bool RequestConnect(const FString &ServerUrl, int ServerPort, const FString &Username, const FString &Password) override
 	{
 		return true;
 	}

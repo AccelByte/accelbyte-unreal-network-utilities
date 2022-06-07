@@ -19,9 +19,11 @@ void* LibICEHandle = nullptr;
 
 void FAccelByteNetworkUtilitiesModule::StartupModule()
 {
-	UE_LOG_ABNET(Log, TEXT("AccelByteNetworkUtilities startup"));
-	
-	const FString BaseDir = IPluginManager::Get().FindPlugin("AccelByteNetworkUtilities")->GetBaseDir();
+	TSharedPtr<IPlugin> Plugin = IPluginManager::Get().FindPlugin("AccelByteNetworkUtilities");
+	const FString BaseDir = Plugin->GetBaseDir();
+	const FPluginDescriptor &Descriptor = Plugin->GetDescriptor();
+
+	UE_LOG_ABNET(Log, TEXT("AccelByteNetworkUtilities version: %s"), *Descriptor.VersionName);
 
 #ifdef LIBJUICE
 #if PLATFORM_WINDOWS
@@ -49,6 +51,19 @@ void FAccelByteNetworkUtilitiesModule::StartupModule()
 	LibICEHandle = FPlatformProcess::GetDllHandle(TEXT("libjuice.so"));
 #endif //PLATFORM_WINDOWS
 
+	FSocketSubsystemAccelByte* SocketSubsystem = FSocketSubsystemAccelByte::Create();
+	FString Error;
+	if (SocketSubsystem->Init(Error))
+	{
+		FSocketSubsystemModule& SSS = FModuleManager::LoadModuleChecked<FSocketSubsystemModule>("Sockets");
+		SSS.RegisterSocketSubsystem(ACCELBYTE_SUBSYSTEM, SocketSubsystem, false);
+		UE_LOG_ABNET(Log, TEXT("AccelByte socket subsystem registered"));
+	}
+	else
+	{
+		UE_LOG_ABNET(Log, TEXT("Can not register AccelByte socket subsystem: %s"), *Error);
+	}
+	
 #endif //LIBJUICE
 }
 
@@ -67,9 +82,9 @@ FAccelByteNetworkUtilitiesModule& FAccelByteNetworkUtilitiesModule::Get()
 	return FModuleManager::LoadModuleChecked<FAccelByteNetworkUtilitiesModule>("AccelByteNetworkUtilities");
 }
 
-void FAccelByteNetworkUtilitiesModule::Run()
+void FAccelByteNetworkUtilitiesModule::Setup(AccelByte::FApiClientPtr InApiClientPtr)
 {
-	AccelByteNetworkManager::Instance().Run();
+	AccelByteNetworkManager::Instance().Setup(InApiClientPtr);
 }
 
 void FAccelByteNetworkUtilitiesModule::RequestConnect(const FString& PeerId)
@@ -89,24 +104,24 @@ void FAccelByteNetworkUtilitiesModule::CloseAllICEConnection()
 
 void FAccelByteNetworkUtilitiesModule::RegisterDefaultSocketSubsystem()
 {
-	FSocketSubsystemAccelByte* SocketSubsystem = FSocketSubsystemAccelByte::Create();
-	FString Error;
-	if (SocketSubsystem->Init(Error))
+	FSocketSubsystemModule& SSS = FModuleManager::LoadModuleChecked<FSocketSubsystemModule>("Sockets");
+	ISocketSubsystem* SocketSubsystem = SSS.GetSocketSubsystem(ACCELBYTE_SUBSYSTEM);
+	if(SocketSubsystem == nullptr)
 	{
-		FSocketSubsystemModule& SSS = FModuleManager::LoadModuleChecked<FSocketSubsystemModule>("Sockets");
-		SSS.RegisterSocketSubsystem(ACCELBYTE_SUBSYSTEM, SocketSubsystem, true);
-		UE_LOG_ABNET(Log, TEXT("AccelByte socket subsystem registered"));
+		UE_LOG_ABNET(Warning, TEXT("AccelByte socket subsystem is null!"));
 	}
 	else
 	{
-		UE_LOG_ABNET(Log, TEXT("Can not register AccelByte socket subsystem: %s"), *Error);
-	}
+		SSS.RegisterSocketSubsystem(ACCELBYTE_SUBSYSTEM, SocketSubsystem, true);
+		UE_LOG_ABNET(Log, TEXT("AccelByte socket subsystem registered as default"));
+	}	
 }
 
 void FAccelByteNetworkUtilitiesModule::UnregisterDefaultSocketSubsystem()
 {
 	FSocketSubsystemModule& SSS = FModuleManager::LoadModuleChecked<FSocketSubsystemModule>("Sockets");
-	SSS.UnregisterSocketSubsystem(ACCELBYTE_SUBSYSTEM);
+	ISocketSubsystem* PlatformSocketSubsystem = SSS.GetSocketSubsystem(PLATFORM_SOCKETSUBSYSTEM);
+	SSS.RegisterSocketSubsystem(PLATFORM_SOCKETSUBSYSTEM, PlatformSocketSubsystem, true);
 }
 
 #undef LOCTEXT_NAMESPACE

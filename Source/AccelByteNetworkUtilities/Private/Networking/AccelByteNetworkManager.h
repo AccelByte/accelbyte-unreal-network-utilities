@@ -3,6 +3,8 @@
 // and restrictions contact your company contract manager.
 
 #pragma once
+#include "Core/AccelByteApiClient.h"
+#include "Core/AccelByteMultiRegistry.h"
 
 class AccelByteICEBase;
 class AccelByteSignalingBase;
@@ -46,10 +48,11 @@ public:
 	bool RequestConnect(const FString& PeerId);
 
 	/**
-	 * @brief Run the manager. Manager run after the AccelByte Login successfully.
+	 * @brief Setup the network manager before use
 	 *
-	*/
-	void Run();
+	 * @param InApiClientPtr ApiClient to use for the P2P connection
+	 */
+	void Setup(AccelByte::FApiClientPtr InApiClientPtr);
 
 	/**
 	 * @brief Send data to peer id connection
@@ -96,25 +99,32 @@ public:
 	OnWebRTCDataChannelClosed OnWebRTCDataChannelClosedDelegate;
 
 private:
-
+	// Api client to communicate with Accelbyte services
+	AccelByte::FApiClientPtr ApiClientPtr;
+	
 	//Instance of the Signaling client
 	TSharedPtr<AccelByteSignalingBase> Signaling;
 
 	//Store all ICE connection by its peer id
 	TMap<FString, TSharedPtr<AccelByteICEBase>> PeerIdToICEConnectionMap;
 
+	//store the first time peer want to connect
+	TMap<FString, FDateTime> PeerRequestConnectTime;
+
 	/*
 	 * Store the peer data to queue because it has different read mechanism
 	 * Most of ice library using callback when any data received
 	 * But Unreal read it in every update
 	 */
-	TQueue<TSharedPtr<ICEData>> QueueDatas;
+	TQueue<TSharedPtr<ICEData>, EQueueMode::Mpsc> QueueDatas;
 
 	//Cached last read data from peer connection
 	TSharedPtr<ICEData> LastReadData;
 
 	//Offset of the data read from cached data (LastReadData)
 	int Offset = -1;
+
+	bool bIsRunning = false;
 
 	/**
 	 * @brief Check whatever there is data ready to read from cached data (LastReadData)
@@ -160,4 +170,6 @@ private:
 	* @param PeerId of the remote connection
 	*/
 	TSharedPtr<AccelByteICEBase> CreateNewConnection(const FString& PeerId);
+
+	bool TickForDisconnection(float DeltaTime);
 };
