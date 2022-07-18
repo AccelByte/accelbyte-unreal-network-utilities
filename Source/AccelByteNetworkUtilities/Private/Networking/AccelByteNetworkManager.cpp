@@ -199,6 +199,7 @@ void AccelByteNetworkManager::ClosePeerConnection(const FString& PeerId)
 	if (PeerIdToICEConnectionMap.Contains(PeerId)) 
 	{
 		PeerIdToICEConnectionMap[PeerId]->ClosePeerConnection();
+		PeerIdToICEConnectionMap.Remove(PeerId);
 	}
 }
 

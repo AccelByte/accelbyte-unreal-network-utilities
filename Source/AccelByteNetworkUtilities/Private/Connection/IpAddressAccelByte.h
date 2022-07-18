@@ -4,7 +4,11 @@
 
 #pragma once
 
+#if ENGINE_MAJOR_VERSION >= 5
+#include "Online/CoreOnline.h"
+#else
 #include "UObject/CoreOnline.h"
+#endif
 #include "IPAddress.h"
 #include "AccelByteNetworkUtilitiesPackage.h"
 
