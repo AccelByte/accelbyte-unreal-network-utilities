@@ -27,26 +27,11 @@ void FAccelByteNetworkUtilitiesModule::StartupModule()
 
 #ifdef LIBJUICE
 #if PLATFORM_WINDOWS
-#if UE_BUILD_DEBUG || UE_BUILD_DEVELOPMENT
-	const auto LibraryPath = FPaths::Combine(*BaseDir, TEXT("source/ThirdParty/LibJuice/x64/debug/juice.dll"));
-#else
+	// always use release dll to avoid no VCRedist installed on game client
 	const auto LibraryPath = FPaths::Combine(*BaseDir, TEXT("source/ThirdParty/LibJuice/x64/release/juice.dll"));
-#endif
 	LibICEHandle = FPlatformProcess::GetDllHandle(*LibraryPath);
 #elif PLATFORM_SWITCH
 	LibICEHandle = FPlatformProcess::GetDllHandle(TEXT("juice.nro"));
-#elif PLATFORM_XSX
-#if UE_BUILD_DEBUG || UE_BUILD_DEVELOPMENT
-	const auto LibraryPath = FPaths::Combine(*BaseDir, TEXT("source/ThirdParty/LibJuice/xsx/debug/juice.dll"));
-#else
-	const auto LibraryPath = FPaths::Combine(*BaseDir, TEXT("source/ThirdParty/LibJuice/xsx/release/juice.dll"));
-#endif
-	//TODO: dynamic library not working for now
-	//LibICEHandle = FPlatformProcess::GetDllHandle(LibraryPath);
-#elif PLATFORM_PS4
-	LibICEHandle = FPlatformProcess::GetDllHandle(TEXT("juice.prx"));
-#elif PLATFORM_PS5
-	LibICEHandle = FPlatformProcess::GetDllHandle(TEXT("juice.prx"));
 #elif PLATFORM_LINUX
 	LibICEHandle = FPlatformProcess::GetDllHandle(TEXT("libjuice.so"));
 #endif //PLATFORM_WINDOWS

@@ -25,8 +25,9 @@ public class LibJuice : ModuleRules
 			    Target.Configuration == UnrealTargetConfiguration.Development ||
 			    Target.Configuration == UnrealTargetConfiguration.DebugGame)
 			{
-				RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "x64/debug/juice.dll"), StagedFileType.NonUFS);
-				PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "x64/debug/juice.lib"));
+				// uses release library, no need VC redis when running the game
+				RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "x64/release/juice.dll"), StagedFileType.NonUFS);
+				PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "x64/release/juice.lib"));
 			}
 			else
 			{
@@ -42,12 +43,10 @@ public class LibJuice : ModuleRules
 			    Target.Configuration == UnrealTargetConfiguration.Development ||
 			    Target.Configuration == UnrealTargetConfiguration.DebugGame)
 			{
-				//RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "xbox/debug/juice.dll"), StagedFileType.NonUFS);
 				PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "xbox/static/debug/juice.lib"));
 			}
 			else
 			{
-				//RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "xbox/release/juice.dll"), StagedFileType.NonUFS);
 				PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "xbox/static/release/juice.lib"));
 			}
 		} 
@@ -58,12 +57,10 @@ public class LibJuice : ModuleRules
 			    Target.Configuration == UnrealTargetConfiguration.Development ||
 			    Target.Configuration == UnrealTargetConfiguration.DebugGame)
 			{
-				//RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "xsx/debug/juice.dll"), StagedFileType.NonUFS);
 				PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "xsx/static/debug/juice.lib"));
 			}
 			else
 			{
-				//RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "xsx/release/juice.dll"), StagedFileType.NonUFS);
 				PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "xsx/static/release/juice.lib"));
 			}
 		}
@@ -75,13 +72,11 @@ public class LibJuice : ModuleRules
 			    Target.Configuration == UnrealTargetConfiguration.Development ||
 			    Target.Configuration == UnrealTargetConfiguration.DebugGame)
 			{
-				RuntimeDependencies.Add("$(BinaryOutputDir)/juice.prx",Path.Combine(ModuleDirectory, "ps4/debug/juice.prx"));
-				PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "ps4/debug/juice_stub.a"));
+				PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "ps4/debug/juice.a"));
 			}
 			else
 			{
-				RuntimeDependencies.Add("$(BinaryOutputDir)/juice.prx",Path.Combine(ModuleDirectory, "ps4/release/juice.prx"));
-				PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "ps4/release/juice_stub.a"));
+				PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "ps4/release/juice.a"));
 			}
 		} 
 		else if (PlatformString == "PS5")
@@ -92,13 +87,11 @@ public class LibJuice : ModuleRules
 				Target.Configuration == UnrealTargetConfiguration.Development ||
 				Target.Configuration == UnrealTargetConfiguration.DebugGame)
 			{
-				RuntimeDependencies.Add("$(BinaryOutputDir)/juice.prx",Path.Combine(ModuleDirectory, "ps5/debug/juice.prx"));
-				PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "ps5/debug/juice_stub.a"));
+				PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "ps5/debug/juice.a"));
 			}
 			else
 			{
-				RuntimeDependencies.Add("$(BinaryOutputDir)/juice.prx",Path.Combine(ModuleDirectory, "ps5/release/juice.prx"));
-				PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "ps5/release/juice_stub.a"));
+				PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "ps5/release/juice.a"));
 			}
 		}
 		else if (PlatformString == "SWITCH")
