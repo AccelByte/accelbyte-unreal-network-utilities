@@ -25,17 +25,14 @@ public class LibJuice : ModuleRules
 			    Target.Configuration == UnrealTargetConfiguration.Development ||
 			    Target.Configuration == UnrealTargetConfiguration.DebugGame)
 			{
-				// uses release library, no need VC redis when running the game
-				RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "x64/release/juice.dll"), StagedFileType.NonUFS);
-				PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "x64/release/juice.lib"));
+				PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "x64/static/relwithdebinfo/juice-static.lib"));
 			}
 			else
 			{
-				RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "x64/release/juice.dll"), StagedFileType.NonUFS);
-				PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "x64/release/juice.lib"));
+				PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "x64/static/release/juice-static.lib"));
 			}
-			PublicDelayLoadDLLs.Add("juice.dll");
-        } 
+			PublicAdditionalLibraries.Add("bcrypt.lib");
+		}
         else if (PlatformString == "XBOXONEGDK")
 		{
 			PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "include"));

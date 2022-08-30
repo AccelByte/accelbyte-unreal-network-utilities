@@ -23,9 +23,9 @@ FInternetAddrAccelByte::FInternetAddrAccelByte(const FUniqueNetId& InSteamId)
 TArray<uint8> FInternetAddrAccelByte::GetRawIp() const 
 {
 	TArray<uint8> Array;
-	FUniqueNetIdString Temp(NetId);
-	const uint8* It = Temp.GetBytes();
-	while (Array.Num() < Temp.GetSize())
+	FUniqueNetIdStringRef Temp = FUniqueNetIdString::Create(NetId, FName(TEXT("ACCELBYTE")));
+	const uint8* It = Temp->GetBytes();
+	while (Array.Num() < Temp->GetSize())
 	{
 		Array.Add(*It);
 		++It;

@@ -26,11 +26,7 @@ void FAccelByteNetworkUtilitiesModule::StartupModule()
 	UE_LOG_ABNET(Log, TEXT("AccelByteNetworkUtilities version: %s"), *Descriptor.VersionName);
 
 #ifdef LIBJUICE
-#if PLATFORM_WINDOWS
-	// always use release dll to avoid no VCRedist installed on game client
-	const auto LibraryPath = FPaths::Combine(*BaseDir, TEXT("source/ThirdParty/LibJuice/x64/release/juice.dll"));
-	LibICEHandle = FPlatformProcess::GetDllHandle(*LibraryPath);
-#elif PLATFORM_SWITCH
+#if PLATFORM_SWITCH
 	LibICEHandle = FPlatformProcess::GetDllHandle(TEXT("juice.nro"));
 #elif PLATFORM_LINUX
 	LibICEHandle = FPlatformProcess::GetDllHandle(TEXT("libjuice.so"));
