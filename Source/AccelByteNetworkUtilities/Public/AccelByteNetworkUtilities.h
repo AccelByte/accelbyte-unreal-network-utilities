@@ -16,6 +16,13 @@ public:
 	 * @param param2 status of the connection
 	 */
 	DECLARE_DELEGATE_TwoParams(OnICEConnected, const FString&, bool);
+
+	/**
+	* @brief Delegate when any ICE connection closed
+	*
+	* @param String peer id of the remote connection
+	*/
+	DECLARE_DELEGATE_OneParam(OnICEClosed, const FString&);
 	
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
@@ -43,6 +50,13 @@ public:
 	void RegisterICEConnectedDelegate(OnICEConnected Delegate);
 
 	/**
+	 * @brief Register connection delegate
+	 *
+	 * @param Delegate to register
+	 */
+	void RegisterICEClosedDelegate(OnICEClosed Delegate);
+
+	/**
 	 * @brief Close all peer-to-peer connection to this host
 	 */
 	void CloseAllICEConnection();
@@ -59,4 +73,5 @@ public:
 
 private:
 	OnICEConnected OnICEConnectedDelegate;
+	OnICEClosed OnICEClosedDelegate;
 };

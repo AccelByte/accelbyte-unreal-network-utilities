@@ -78,6 +78,11 @@ void FAccelByteNetworkUtilitiesModule::RegisterICEConnectedDelegate(OnICEConnect
 	AccelByteNetworkManager::Instance().OnWebRTCDataChannelConnectedDelegate = Delegate;
 }
 
+void FAccelByteNetworkUtilitiesModule::RegisterICEClosedDelegate(OnICEClosed Delegate)
+{
+	AccelByteNetworkManager::Instance().OnWebRTCDataChannelClosedDelegate = Delegate;
+}
+
 void FAccelByteNetworkUtilitiesModule::CloseAllICEConnection()
 {
 	AccelByteNetworkManager::Instance().CloseAllPeerConnections();

@@ -200,6 +200,7 @@ void AccelByteNetworkManager::ClosePeerConnection(const FString& PeerId)
 	{
 		PeerIdToICEConnectionMap[PeerId]->ClosePeerConnection();
 		PeerIdToICEConnectionMap.Remove(PeerId);
+		OnWebRTCDataChannelClosedDelegate.ExecuteIfBound(PeerId);
 	}
 }
 
@@ -214,6 +215,8 @@ void AccelByteNetworkManager::CloseAllPeerConnections()
 	{
 		Item->ClosePeerConnection();
 	}
+	PeerIdToICEConnectionMap.Empty();
+	OnWebRTCDataChannelClosedDelegate.ExecuteIfBound("");
 }
 
 bool AccelByteNetworkManager::IsDataReadyToRead() const 
@@ -301,6 +304,7 @@ bool AccelByteNetworkManager::TickForDisconnection(float /*DeltaTime*/)
 		{
 			PeerIdToICEConnectionMap[key]->ClosePeerConnection();
 			PeerIdToICEConnectionMap.Remove(key);
+			OnWebRTCDataChannelClosedDelegate.ExecuteIfBound(key);
 		}
 	}
 	return true;
