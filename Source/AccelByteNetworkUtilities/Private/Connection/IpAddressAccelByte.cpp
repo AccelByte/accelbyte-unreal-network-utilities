@@ -23,7 +23,11 @@ FInternetAddrAccelByte::FInternetAddrAccelByte(const FUniqueNetId& InSteamId)
 TArray<uint8> FInternetAddrAccelByte::GetRawIp() const 
 {
 	TArray<uint8> Array;
-	FUniqueNetIdStringRef Temp = FUniqueNetIdString::Create(NetId, FName(TEXT("ACCELBYTE")));
+#if (ENGINE_MAJOR_VERSION==4 && ENGINE_MINOR_VERSION<27)
+	TSharedRef<FUniqueNetIdString> Temp = MakeShared<FUniqueNetIdString>(NetId);
+#else
+	FUniqueNetIdStringRef Temp = FUniqueNetIdString::Create(NetId, FName(TEXT("ACCELBYTE")));	
+#endif
 	const uint8* It = Temp->GetBytes();
 	while (Array.Num() < Temp->GetSize())
 	{

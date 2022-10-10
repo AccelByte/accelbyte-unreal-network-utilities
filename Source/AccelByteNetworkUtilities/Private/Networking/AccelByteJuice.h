@@ -100,6 +100,11 @@ private:
 	 * This variable is to save the temporary value from FString
 	 */
 	TurnConfigHelper ConfigHelper;
+
+	/*
+	 * Store the latest juice state
+	 */
+	juice_state_t LastJuiceState = JUICE_STATE_DISCONNECTED;
 	
 	/**
 	 * @brief Create peer connection using defined Turn server

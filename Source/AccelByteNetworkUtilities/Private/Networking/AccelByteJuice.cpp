@@ -355,6 +355,11 @@ void AccelByteJuice::JuiceStateChanged(juice_state_t State)
 		ClosePeerConnection();
 		OnICEDataChannelClosedDelegate.ExecuteIfBound(PeerId);
 	}
+	if(LastJuiceState == JUICE_STATE_CONNECTING && (State == JUICE_STATE_FAILED || State == JUICE_STATE_COMPLETED || State == JUICE_STATE_DISCONNECTED))
+	{
+		UE_LOG_ABNET(Error, TEXT("please double check your TurnServerSecret, make sure it has the correct value, config located at .ini file under [AccelByteNetworkUtilities] path"));
+	}
+	LastJuiceState = State;
 }
 
 void AccelByteJuice::JuiceCandidate(const char* Candidate)
