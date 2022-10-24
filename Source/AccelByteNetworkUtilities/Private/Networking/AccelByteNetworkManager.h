@@ -171,5 +171,18 @@ private:
 	*/
 	TSharedPtr<AccelByteICEBase> CreateNewConnection(const FString& PeerId);
 
+	/**
+	 * @brief Ticker for check if connection failed within some seconds
+	 *
+	 * @param DeltaTime of the loop
+	 */
 	bool TickForDisconnection(float DeltaTime);
+
+	/**
+	 * @brief Request credential to turn manager
+	 *
+	 * @param PeerId user id of the peer want to connect to
+	 * @param SelectedTurnServer the selected turn server to connect to
+	 */
+	void RequestCredentialAndConnect(const FString &PeerId, const FAccelByteModelsTurnServer &SelectedTurnServer);
 };

@@ -31,7 +31,7 @@ public class LibJuice : ModuleRules
 			{
 				PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "x64/static/release/juice-static.lib"));
 			}
-			PublicAdditionalLibraries.Add("bcrypt.lib");
+			PublicSystemLibraries.Add("bcrypt.lib");
 		}
         else if (PlatformString == "XBOXONEGDK")
 		{

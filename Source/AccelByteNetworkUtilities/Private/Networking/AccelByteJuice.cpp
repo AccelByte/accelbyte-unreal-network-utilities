@@ -11,6 +11,7 @@
 #include "AccelByteNetworkUtilitiesLog.h"
 #include "Async/TaskGraphInterfaces.h" 
 #include "Misc/Base64.h"
+#include "Misc/CommandLine.h"
 #include "HAL/UnrealMemory.h"
 
 #define DO_TASK(task) FFunctionGraphTask::CreateAndDispatchWhenReady(task, TStatId(), nullptr);

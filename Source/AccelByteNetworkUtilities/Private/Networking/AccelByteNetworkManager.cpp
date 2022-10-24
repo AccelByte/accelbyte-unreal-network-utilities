@@ -4,6 +4,7 @@
 
 #include "AccelByteNetworkManager.h"
 #include "HAL/UnrealMemory.h"
+#include "Misc/Base64.h"
 #include "AccelByteSignaling.h"
 #include "AccelByteICEBase.h"
 #include "AccelByteJuice.h"
@@ -41,39 +42,48 @@ bool AccelByteNetworkManager::RequestConnect(const FString& PeerId)
 	if(bIsUseTurnManager)
 	{
 		ApiClientPtr->TurnManager.GetClosestTurnServer(THandler<FAccelByteModelsTurnServer>::CreateLambda(
-                [this, PeerId](const FAccelByteModelsTurnServer &Result)
-                {                    
-                    UE_LOG_ABNET(Log, TEXT("Selected TURN server : %s:%d"), *Result.Ip, Result.Port);
-                	
-                	FString TurnSecret;
-                	FString TurnUsername;
-                	if(!GConfig->GetString(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerSecret"), TurnSecret, GEngineIni))
-                	{
-                        UE_LOG_ABNET(Error, TEXT("TurnServerSecret was missing in DefaultEngine.ini"));
-                    }
-                	if(!GConfig->GetString(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerUsername"), TurnUsername, GEngineIni))
-                	{
-                        UE_LOG_ABNET(Error, TEXT("TurnServerUsername was missing in DefaultEngine.ini"));
-                    }
-                	
-					// This only used once to login to turn server. Once logged to turn, the lifetime does not take into account.
-					// The turn session already handled automatically by the ICE library and turn server
-					const int64 lifeTime = 5 * 60; // 5 minutes.
-					const int64 curTime = Result.Current_time + lifeTime;
-					FString Username = FString::Printf(TEXT("%lld:%s"), curTime, *TurnUsername);
-					uint8 DataOut[20]; //20 is sha1 length
-					FSHA1::HMACBuffer(TCHAR_TO_ANSI(*TurnSecret), TurnSecret.Len(), TCHAR_TO_ANSI(*Username), Username.Len(), DataOut);
-					FString Password = FBase64::Encode(DataOut, 20);
+				[this, PeerId](const FAccelByteModelsTurnServer &Result)
+				{
+					UE_LOG_ABNET(Log, TEXT("Selected TURN server : %s:%d"), *Result.Ip, Result.Port);
 
-                	TSharedPtr<AccelByteICEBase> Rtc = CreateNewConnection(PeerId);
-                	PeerIdToICEConnectionMap.Add(PeerId, Rtc);
-                	Rtc->RequestConnect(Result.Ip, Result.Port, Username, Password);
-                }),
-                FErrorHandler::CreateLambda([this, PeerId](int32, const FString &ErrorMessage)
-                {
-                    UE_LOG_ABNET(Error, TEXT("Error getting turn server from turn manager: %s"), *ErrorMessage);
-                    OnWebRTCDataChannelConnectedDelegate.ExecuteIfBound(PeerId, false);
-                }));
+					FString TurnSecret;
+					FString TurnUsername;
+					if(!GConfig->GetString(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerSecret"), TurnSecret, GEngineIni))
+					{
+						UE_LOG_ABNET(Error, TEXT("TurnServerSecret was missing in DefaultEngine.ini"));
+					}
+					if(!GConfig->GetString(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerUsername"), TurnUsername, GEngineIni))
+					{
+						TurnUsername = TEXT("accelbyte");
+						UE_LOG_ABNET(Warning, TEXT("TurnServerUsername was missing in DefaultEngine.ini, using default username"));
+					}
+
+					if(!TurnSecret.IsEmpty())
+					{
+						UE_LOG_ABNET(Log, TEXT("TURN using static auth secret"));
+						// This only used once to login to turn server. Once logged to turn, the lifetime does not take into account.
+						// The turn session already handled automatically by the ICE library and turn server
+						const int64 lifeTime = 5 * 60; // 5 minutes.
+						const int64 curTime = Result.Current_time + lifeTime;
+						FString Username = FString::Printf(TEXT("%lld:%s"), curTime, *TurnUsername);
+						uint8 DataOut[20]; //20 is sha1 length
+						FSHA1::HMACBuffer(TCHAR_TO_ANSI(*TurnSecret), TurnSecret.Len(), TCHAR_TO_ANSI(*Username), Username.Len(), DataOut);
+						FString Password = FBase64::Encode(DataOut, 20);
+
+						TSharedPtr<AccelByteICEBase> Rtc = CreateNewConnection(PeerId);
+						PeerIdToICEConnectionMap.Add(PeerId, Rtc);
+						Rtc->RequestConnect(Result.Ip, Result.Port, Username, Password);
+					} else
+					{
+						UE_LOG_ABNET(Log, TEXT("TURN using dynamic auth secret"));
+						RequestCredentialAndConnect(PeerId, Result);
+					}
+				}),
+				FErrorHandler::CreateLambda([this, PeerId](int32, const FString &ErrorMessage)
+				{
+					UE_LOG_ABNET(Error, TEXT("Error getting turn server from turn manager: %s"), *ErrorMessage);
+					OnWebRTCDataChannelConnectedDelegate.ExecuteIfBound(PeerId, false);
+				}));
 	}
 	else
 	{
@@ -308,4 +318,19 @@ bool AccelByteNetworkManager::TickForDisconnection(float /*DeltaTime*/)
 		}
 	}
 	return true;
+}
+
+void AccelByteNetworkManager::RequestCredentialAndConnect(const FString& PeerId, const FAccelByteModelsTurnServer& SelectedTurnServer)
+{
+	ApiClientPtr->TurnManager.GetTurnCredential(SelectedTurnServer.Region, SelectedTurnServer.Ip, SelectedTurnServer.Port,
+		THandler<FAccelByteModelsTurnServerCredential>::CreateLambda([this, PeerId](const FAccelByteModelsTurnServerCredential &Credential)
+		{
+			TSharedPtr<AccelByteICEBase> Rtc = CreateNewConnection(PeerId);
+			PeerIdToICEConnectionMap.Add(PeerId, Rtc);
+			Rtc->RequestConnect(Credential.Ip, Credential.Port, Credential.Username, Credential.Password);
+		}), FErrorHandler::CreateLambda([this, PeerId](int32 Code, const FString &ErrorMessage)
+		{
+			UE_LOG_ABNET(Error, TEXT("Error getting turn server credential: %s"), *ErrorMessage);
+			OnWebRTCDataChannelConnectedDelegate.ExecuteIfBound(PeerId, false);
+		}));
 }

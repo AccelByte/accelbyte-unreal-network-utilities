@@ -5,6 +5,7 @@
 #include "SocketSubsystemAccelByte.h"
 #include "IpAddressAccelByte.h"
 #include "SocketAccelByte.h"
+#include "Misc/ConfigCacheIni.h"
 #include "AccelByteNetworkUtilitiesConstant.h"
 
 static FSocketSubsystemAccelByte* SocketSubsystemAccelByteInstance = nullptr;

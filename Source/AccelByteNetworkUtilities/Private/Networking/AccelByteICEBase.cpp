@@ -3,6 +3,7 @@
 // and restrictions contact your company contract manager.
 
 #include "AccelByteICEBase.h"
+#include "Policies/CondensedJsonPrintPolicy.h"
 #include "Serialization/JsonSerializer.h"
 
 void AccelByteICEBase::JsonToString(FString& Out, TSharedRef<FJsonObject> JsonObject)

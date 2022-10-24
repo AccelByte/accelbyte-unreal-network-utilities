@@ -9,6 +9,8 @@
 #include "AccelByteICEBase.h"
 #include "juice/juice.h"
 #include "HAL/ThreadingBase.h"
+#include "Dom/JsonObject.h"
+#include "Containers/Queue.h"
 
 /*
  * Currently max char host name, username, and password is 64.

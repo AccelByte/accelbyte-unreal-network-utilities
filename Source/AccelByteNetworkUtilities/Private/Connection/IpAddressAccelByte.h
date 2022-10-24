@@ -10,6 +10,7 @@
 #include "UObject/CoreOnline.h"
 #endif
 #include "IPAddress.h"
+#include "Runtime/Launch/Resources/Version.h"
 #include "AccelByteNetworkUtilitiesPackage.h"
 
 /*
