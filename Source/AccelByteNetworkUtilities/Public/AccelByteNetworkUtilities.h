@@ -70,8 +70,4 @@ public:
 	* @brief Use default platform socket subsystem and unregister accelbyte socket subsystem
 	*/
 	void UnregisterDefaultSocketSubsystem();
-
-private:
-	OnICEConnected OnICEConnectedDelegate;
-	OnICEClosed OnICEClosedDelegate;
 };

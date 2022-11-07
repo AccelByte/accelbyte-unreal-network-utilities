@@ -125,6 +125,10 @@ void AccelByteNetworkManager::Setup(AccelByte::FApiClientPtr InApiClientPtr)
 	}
 	
 	Signaling->SetOnWebRTCSignalingMessage(AccelByteSignalingBase::OnWebRTCSignalingMessage::CreateRaw(this, &AccelByteNetworkManager::OnSignalingMessage));
+
+	// setup tick
+	FTickerDelegate TickerDelegate = FTickerDelegate::CreateRaw(this, &AccelByteNetworkManager::Tick);
+	FTickerAlias::GetCoreTicker().AddTicker(TickerDelegate, 0.5);
 }
 
 bool AccelByteNetworkManager::SendTo(const uint8* Data, int32 Count, int32& BytesSent, const FString& PeerId) 
@@ -261,6 +265,7 @@ void AccelByteNetworkManager::IncomingData(const FString& FromPeerId, const uint
 void AccelByteNetworkManager::RTCConnected(const FString& PeerId) 
 {
 	UE_LOG_ABNET(Log, TEXT("ICE connected: %s"), *PeerId);
+	FScopeLock ScopeLock(&LockObject);
 	PeerRequestConnectTime.Remove(PeerId);
 	OnWebRTCDataChannelConnectedDelegate.ExecuteIfBound(PeerId, true);
 }
@@ -268,10 +273,11 @@ void AccelByteNetworkManager::RTCConnected(const FString& PeerId)
 void AccelByteNetworkManager::RTCClosed(const FString& PeerId) 
 {
 	UE_LOG_ABNET(Log, TEXT("ICE closed: %s"), *PeerId);
+	FScopeLock ScopeLock(&LockObject);
 	PeerRequestConnectTime.Remove(PeerId);
 	if (PeerIdToICEConnectionMap.Contains(PeerId)) 
 	{
-		PeerIdToICEConnectionMap.Remove(PeerId);
+		ScheduleToDestroy.Enqueue(PeerId);
 		OnWebRTCDataChannelClosedDelegate.ExecuteIfBound(PeerId);
 	}
 }
@@ -287,35 +293,49 @@ TSharedPtr<AccelByteICEBase> AccelByteNetworkManager::CreateNewConnection(const 
 	Rtc->SetOnICEDataChannelConnectedDelegate(AccelByteICEBase::OnICEDataChannelConnected::CreateRaw(this, &AccelByteNetworkManager::RTCConnected));
 	Rtc->SetOnICEDataChannelClosedDelegate(AccelByteICEBase::OnICEDataChannelClosed::CreateRaw(this, &AccelByteNetworkManager::RTCClosed));
 	Rtc->SetOnICEDataReadyDelegate(AccelByteICEBase::OnICEDataReady::CreateRaw(this, &AccelByteNetworkManager::IncomingData));
-	PeerRequestConnectTime.Add(PeerId, FDateTime::Now());
+	Rtc->SetOnICEDataChannelConnectionErrorDelegate(AccelByteICEBase::OnICEDataChannelConnectionError::CreateRaw(this, &AccelByteNetworkManager::OnICEConnectionErrorCallback));
+	{
+		FScopeLock ScopeLock(&LockObject);
+		PeerRequestConnectTime.Add(PeerId, FDateTime::Now());
+	}	
 	return Rtc;
 }
 
-bool AccelByteNetworkManager::TickForDisconnection(float /*DeltaTime*/)
+bool AccelByteNetworkManager::Tick(float /*DeltaTime*/)
 {
 	FDateTime now = FDateTime::Now();
 	TArray<FString> ToRemove;
-	for(auto &Elem: PeerRequestConnectTime)
 	{
-		// 30 seconds for connection timeout
-		if(now.ToUnixTimestamp() - Elem.Value.ToUnixTimestamp() > 30)
+		FScopeLock ScopeLock(&LockObject);
+		for(auto &Elem: PeerRequestConnectTime)
 		{
-			if(PeerRequestConnectTime.Contains(Elem.Key))
+			// 30 seconds for connection timeout
+			if(now.ToUnixTimestamp() - Elem.Value.ToUnixTimestamp() > 30)
 			{
-				ToRemove.Add(Elem.Key);
+				if(PeerRequestConnectTime.Contains(Elem.Key))
+				{
+					ToRemove.Add(Elem.Key);
+				}
 			}
 		}
-	}
-	for (int i = ToRemove.Num() - 1; i >= 0; i--) {
-		FString key = ToRemove[i];
+		for (int i = ToRemove.Num() - 1; i >= 0; i--) {
+			FString key = ToRemove[i];
 
-		PeerRequestConnectTime.Remove(key);
-		if (PeerIdToICEConnectionMap.Contains(key)) 
-		{
-			PeerIdToICEConnectionMap[key]->ClosePeerConnection();
-			PeerIdToICEConnectionMap.Remove(key);
-			OnWebRTCDataChannelClosedDelegate.ExecuteIfBound(key);
+			PeerRequestConnectTime.Remove(key);
+			if (PeerIdToICEConnectionMap.Contains(key)) 
+			{
+				PeerIdToICEConnectionMap[key]->ClosePeerConnection();
+				PeerIdToICEConnectionMap.Remove(key);
+				OnWebRTCDataChannelClosedDelegate.ExecuteIfBound(key);
+				OnWebRTCDataChannelConnectedDelegate.ExecuteIfBound(key, false);
+			}
 		}
+	}	
+
+	FString PeerToDestroy;
+	while(ScheduleToDestroy.Dequeue(PeerToDestroy))
+	{
+		ClosePeerConnection(PeerToDestroy);
 	}
 	return true;
 }
@@ -327,10 +347,30 @@ void AccelByteNetworkManager::RequestCredentialAndConnect(const FString& PeerId,
 		{
 			TSharedPtr<AccelByteICEBase> Rtc = CreateNewConnection(PeerId);
 			PeerIdToICEConnectionMap.Add(PeerId, Rtc);
-			Rtc->RequestConnect(Credential.Ip, Credential.Port, Credential.Username, Credential.Password);
+			FString Password = Credential.Password;
+			FString ParamValue;
+			if(FParse::Value(FCommandLine::Get(), TEXT("juiceforcefailed"), ParamValue))
+			{
+				Password = TEXT("failedpassword");
+			}
+			Rtc->RequestConnect(Credential.Ip, Credential.Port, Credential.Username, Password);
 		}), FErrorHandler::CreateLambda([this, PeerId](int32 Code, const FString &ErrorMessage)
 		{
 			UE_LOG_ABNET(Error, TEXT("Error getting turn server credential: %s"), *ErrorMessage);
 			OnWebRTCDataChannelConnectedDelegate.ExecuteIfBound(PeerId, false);
 		}));
+}
+
+void AccelByteNetworkManager::OnICEConnectionErrorCallback(const FString& PeerId, const FString& ErrorMessage)
+{
+	FScopeLock ScopeLock(&LockObject);
+	OnIceConnectionErrorDelegate.ExecuteIfBound(PeerId, ErrorMessage);
+	OnWebRTCDataChannelConnectedDelegate.ExecuteIfBound(PeerId, false);
+	
+	// this need to be destroyed on next tick	
+	ScheduleToDestroy.Enqueue(PeerId);
+	if(PeerRequestConnectTime.Contains(PeerId))
+	{
+		PeerRequestConnectTime.Remove(PeerId);
+	}
 }

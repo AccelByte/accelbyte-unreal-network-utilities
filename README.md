@@ -10,19 +10,16 @@ Detail please check [https://en.wikipedia.org/wiki/Interactive_Connectivity_Esta
 ### How to use AccelByteNetworkUtilities ###
 
 To use the ICE connection we need to use the IpNetDriverAccelByte. How to use it:
-1. Update the DefaultEngine.ini
+- Update the `DefaultEngine.ini`
 ```
 [/Script/AccelByteNetworkUtilities.IpNetDriverAccelByte]
 NetConnectionClassName=AccelByteNetworkUtilities.IpConnectionAccelByte
 
 [AccelByteNetworkUtilities]
-TurnServerUrl="54.169.94.224"
-TurnServerPort=3478
-TurnServerUsername="accelbyte"
-TurnServerPassword="accelbyte"
+UseTurnManager=true
 ```
 
-2. Edit the platform specific config ini file. The platform specific config is inside the platform folder name, example for Windows will be in ```Config/Windows/WindowsEngine.ini```
+- Edit the platform specific config ini file. The platform specific config is inside the platform folder name, example for Windows will be in ```Config/Windows/WindowsEngine.ini```. This need to be defined on each platforms (XSX, PS4, PS5, XboxOneGDK, Switch).
 ```
 [/Script/Engine.GameEngine]
 !NetDriverDefinitions=ClearArray

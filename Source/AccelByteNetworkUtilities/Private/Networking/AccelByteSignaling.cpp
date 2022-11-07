@@ -12,7 +12,7 @@ AccelByteSignaling::AccelByteSignaling(AccelByte::FApiClientPtr InApiClient):Api
 
 void AccelByteSignaling::Init()
 {
-	auto Delegate = AccelByte::Api::Lobby::FSignalingP2P::CreateRaw(this, &AccelByteSignaling::OnSignalingMessage);
+	auto Delegate = AccelByte::Api::Lobby::FSignalingP2P::CreateSP(SharedThis(this), &AccelByteSignaling::OnSignalingMessage);
 	ApiClientPtr->Lobby.SetSignalingP2PDelegate(Delegate);
 }
 

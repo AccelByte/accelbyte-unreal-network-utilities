@@ -35,6 +35,14 @@ public:
 	DECLARE_DELEGATE_OneParam(OnWebRTCDataChannelClosed, const FString&);
 
 	/**
+	 * @brief Delegate when any ICE connection closed
+	 *
+	 * @param String peer id of the remote connection
+	 * @param Error string
+	 */
+	DECLARE_DELEGATE_TwoParams(OnICEConnectionError, const FString&, const FString&);
+
+	/**
 	 * @brief Singleton instance of the manager
 	 *
 	*/
@@ -97,6 +105,7 @@ public:
 
 	OnWebRTCDataChannelConnected OnWebRTCDataChannelConnectedDelegate;
 	OnWebRTCDataChannelClosed OnWebRTCDataChannelClosedDelegate;
+	OnICEConnectionError OnIceConnectionErrorDelegate;
 
 private:
 	// Api client to communicate with Accelbyte services
@@ -110,6 +119,12 @@ private:
 
 	//store the first time peer want to connect
 	TMap<FString, FDateTime> PeerRequestConnectTime;
+
+	//store ICE on next tick schedule
+	TQueue<FString, EQueueMode::Mpsc> ScheduleToDestroy;
+
+	//for mutext lock
+	FCriticalSection LockObject;
 
 	/*
 	 * Store the peer data to queue because it has different read mechanism
@@ -176,7 +191,7 @@ private:
 	 *
 	 * @param DeltaTime of the loop
 	 */
-	bool TickForDisconnection(float DeltaTime);
+	bool Tick(float DeltaTime);
 
 	/**
 	 * @brief Request credential to turn manager
@@ -185,4 +200,12 @@ private:
 	 * @param SelectedTurnServer the selected turn server to connect to
 	 */
 	void RequestCredentialAndConnect(const FString &PeerId, const FAccelByteModelsTurnServer &SelectedTurnServer);
+
+	/**
+	 * @brief Callback when any error ICE connection from ICEBase
+	 *
+	 * @param PeerId user id of the peer
+	 * @param ErrorMessage error message
+	 */
+	void OnICEConnectionErrorCallback(const FString &PeerId, const FString &ErrorMessage);
 };

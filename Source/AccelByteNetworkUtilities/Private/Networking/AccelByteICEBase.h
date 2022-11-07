@@ -26,9 +26,10 @@ public:
 	/**
 	* @brief Delegate when ICE data channel has error connection
 	*
+	* @param Peer id of the target
 	* @param Error message
 	*/
-	DECLARE_DELEGATE_OneParam(OnICEDataChannelConnectionError, const FString&);
+	DECLARE_DELEGATE_TwoParams(OnICEDataChannelConnectionError, const FString&,  const FString&);
 
 	/**
 	* @brief Delegate when ICE data channel is closed

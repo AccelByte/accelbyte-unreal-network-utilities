@@ -11,7 +11,7 @@
  * AccelByteSignaling implementation of Signaling using AccelByte lobby backend
  */
 
-class AccelByteSignaling : public AccelByteSignalingBase
+class AccelByteSignaling : public AccelByteSignalingBase, public TSharedFromThis<AccelByteSignaling>
 {
 public:
 	AccelByteSignaling(AccelByte::FApiClientPtr InApiClient);

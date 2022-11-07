@@ -256,7 +256,7 @@ void AccelByteJuice::HandleMessage(TSharedPtr<FJsonObject> Json)
 				}
 				else
 				{
-					OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound("Juice gather candidates failed");
+					OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerId, "Juice gather candidates failed");
 				}
 			}));
 		}
@@ -324,7 +324,7 @@ void AccelByteJuice::SetupLocalDescription()
 	}
 	else
 	{
-		OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound("Juice get local description failed");
+		OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerId, "Juice get local description failed");
 	}
 }
 
@@ -348,12 +348,10 @@ void AccelByteJuice::JuiceStateChanged(juice_state_t State)
 	}
 	else if(State == JUICE_STATE_FAILED)
 	{
-		ClosePeerConnection();
-		OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound("Juice connection failed");
+		OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerId, "Juice connection failed");
 	}
 	else if(State == JUICE_STATE_DISCONNECTED)
 	{
-		ClosePeerConnection();
 		OnICEDataChannelClosedDelegate.ExecuteIfBound(PeerId);
 	}
 	if(LastJuiceState == JUICE_STATE_CONNECTING && (State == JUICE_STATE_FAILED || State == JUICE_STATE_COMPLETED || State == JUICE_STATE_DISCONNECTED))
