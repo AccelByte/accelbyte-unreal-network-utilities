@@ -75,7 +75,8 @@ bool UIpNetDriverAccelByte::InitConnect(FNetworkNotify* InNotify, const FURL& Co
 		if (ConnectURL.Host.StartsWith(ACCELBYTE_URL_PREFIX))
 		{
 			// use AccelByte socket when the connection is ICE connection
-			SetSocketAndLocalAddress(SocketAccelByte->CreateSocket(SOCKET_ACCELBYTE_FNAME, TEXT("Unreal client (AccelByte)"), ACCELBYTE_SUBSYSTEM));
+			TSharedPtr<FSocket> NewSocket = MakeShareable(SocketAccelByte->CreateSocket(SOCKET_ACCELBYTE_FNAME, TEXT("Unreal client (AccelByte)"), ACCELBYTE_SUBSYSTEM));
+			SetSocketAndLocalAddress(NewSocket);
 		}
 		else
 		{
@@ -97,7 +98,8 @@ bool UIpNetDriverAccelByte::InitListen(FNetworkNotify* InNotify, FURL& ListenURL
 	if (SocketAccelByte && !ListenURL.HasOption(TEXT("bIsLanMatch")) && (!IsRunningDedicatedServer() || (IsRunningDedicatedServer() && bIsICEEnabled)))
 	{
 		// use AccelByte socket when the connection is ICE connection
-		SetSocketAndLocalAddress(SocketAccelByte->CreateSocket(SOCKET_ACCELBYTE_FNAME, TEXT("Unreal server (AccelByte)"), ACCELBYTE_SUBSYSTEM));
+		TSharedPtr<FSocket> NewSocket = MakeShareable(SocketAccelByte->CreateSocket(SOCKET_ACCELBYTE_FNAME, TEXT("Unreal server (AccelByte)"), ACCELBYTE_SUBSYSTEM));
+		SetSocketAndLocalAddress(NewSocket);
 	}
 	else
 	{

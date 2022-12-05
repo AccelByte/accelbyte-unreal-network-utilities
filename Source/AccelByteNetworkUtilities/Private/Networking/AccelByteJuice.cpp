@@ -144,7 +144,7 @@ void AccelByteJuice::CreatePeerConnection(const FString& Host, const FString &Us
 	JuiceConfig.turn_servers = TurnServerConfig;
 	JuiceConfig.turn_servers_count = 1;
 	JuiceConfig.user_ptr = this;
-#if PLATFORM_PS4 || PLATFORM_PS5
+#if (defined(PLATFORM_PS4) && PLATFORM_PS4) || (defined(PLATFORM_PS5) && PLATFORM_PS5)
 	// Bind any port not working on PS4, but it works when the bind port is set to 10000-10100
 	JuiceConfig.local_port_range_begin = 10000;
 	JuiceConfig.local_port_range_end = 10100;
