@@ -6,6 +6,7 @@
 
 #include "CoreMinimal.h"
 #include "Dom/JsonObject.h"
+#include "Models/AccelByteTurnModels.h"
 
 class AccelByteSignalingBase;
 
@@ -20,8 +21,9 @@ public:
 	 * @brief Delegate when ICE data channel is connected
 	 *
 	 * @param The remote peer id that connected
+	 * @param P2P connection type (host, srflx, prflx, relay)
 	 */
-	DECLARE_DELEGATE_OneParam(OnICEDataChannelConnected, const FString&);
+	DECLARE_DELEGATE_TwoParams(OnICEDataChannelConnected, const FString&, const EP2PConnectionType&);
 
 	/**
 	* @brief Delegate when ICE data channel has error connection
@@ -29,7 +31,7 @@ public:
 	* @param Peer id of the target
 	* @param Error message
 	*/
-	DECLARE_DELEGATE_TwoParams(OnICEDataChannelConnectionError, const FString&,  const FString&);
+	DECLARE_DELEGATE_TwoParams(OnICEDataChannelConnectionError, const FString&, const FString&);
 
 	/**
 	* @brief Delegate when ICE data channel is closed

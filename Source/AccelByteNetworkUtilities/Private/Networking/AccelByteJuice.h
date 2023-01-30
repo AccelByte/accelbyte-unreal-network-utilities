@@ -132,6 +132,11 @@ private:
 	void JuiceCandidate(const char *Candidate);
 	void JuiceGatheringDone();
 	void JuiceDataRecv(const char *data, size_t size);
+
+	/**
+	 * @brief Return the connection type based on selected remote candidate
+	 */
+	EP2PConnectionType GetP2PConnectionType() const;
 };
 
 #endif

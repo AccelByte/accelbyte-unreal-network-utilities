@@ -141,6 +141,9 @@ private:
 
 	bool bIsRunning = false;
 
+	// Store selected turn manager region for metric purpose, only updated by client
+	FString SelectedTurnServerRegion;
+
 	/**
 	 * @brief Check whatever there is data ready to read from cached data (LastReadData)
 	 *
@@ -169,8 +172,9 @@ private:
 	* @brief RTCConnected called when any peer-to-peer connection connected
 	*
 	* @param PeerId of the remote connection
+	* @param P2PConnectionType of the connection (host, srflx, prflx, or host)
 	*/
-	void RTCConnected(const FString& PeerId);
+	void RTCConnected(const FString& PeerId, const EP2PConnectionType& P2PConnectionType = EP2PConnectionType::None);
 
 	/**
 	* @brief RTCClosed called when any peer-to-peer connection closed
@@ -208,4 +212,11 @@ private:
 	 * @param ErrorMessage error message
 	 */
 	void OnICEConnectionErrorCallback(const FString &PeerId, const FString &ErrorMessage);
+
+	/**
+	 * @brief Send info about P2P connection type and selected turn server region to BE
+	 *
+	 * @param P2PConnectionType the type of P2P connection (host, srflx, prflx, relay)
+	 */
+	void SendMetricData(const EP2PConnectionType &P2PConnectionType);
 };

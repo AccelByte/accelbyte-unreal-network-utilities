@@ -344,7 +344,7 @@ void AccelByteJuice::JuiceStateChanged(juice_state_t State)
 		result = juice_get_selected_candidates(JuiceAgent, localCandidate, MAX_ADDRESS_LENGTH, remoteCandidate, MAX_ADDRESS_LENGTH);
 		UE_LOG_ABNET(Log, TEXT("selected candidate: %d; local : %hs; remote: %hs"), result, localCandidate, remoteCandidate);
 #endif
-		OnICEDataChannelConnectedDelegate.ExecuteIfBound(PeerId);
+		OnICEDataChannelConnectedDelegate.ExecuteIfBound(PeerId, GetP2PConnectionType());
 	}
 	else if(State == JUICE_STATE_FAILED)
 	{
@@ -393,6 +393,39 @@ void AccelByteJuice::JuiceDataRecv(const char* data, size_t size)
 {
 	check(!PeerId.IsEmpty());
 	OnICEDataReadyDelegate.ExecuteIfBound(PeerId, (uint8*)data, size);
+}
+
+EP2PConnectionType AccelByteJuice::GetP2PConnectionType() const
+{
+	char LocalCandidate[MAX_ADDRESS_LENGTH];
+	char RemoteCandidate[MAX_ADDRESS_LENGTH];
+	juice_get_selected_candidates(
+		JuiceAgent, LocalCandidate, MAX_ADDRESS_LENGTH, RemoteCandidate, MAX_ADDRESS_LENGTH);
+
+	// The connection type of remote and local candidates are the same, selected remote candidate used here
+	const FString Candidate = FString(RemoteCandidate);
+	EP2PConnectionType SelectedCandidateType = EP2PConnectionType::None;
+	
+	if (Candidate.Contains(TEXT("typ host")))
+	{
+		SelectedCandidateType = EP2PConnectionType::Host;
+	}
+	else if (Candidate.Contains(TEXT("typ srflx")))
+	{
+		SelectedCandidateType = EP2PConnectionType::Srflx;
+	}
+	else if (Candidate.Contains(TEXT("typ prflx")))
+	{
+		SelectedCandidateType = EP2PConnectionType::Prflx;
+	}
+	else if (Candidate.Contains(TEXT("typ relay")))
+	{
+		SelectedCandidateType = EP2PConnectionType::Relay;
+	}
+
+	UE_LOG_ABNET(Log, TEXT("Connection type: %s"), *UEnum::GetValueAsString(SelectedCandidateType));
+
+	return SelectedCandidateType;
 }
 
 #endif

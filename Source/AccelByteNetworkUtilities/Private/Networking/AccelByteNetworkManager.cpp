@@ -46,6 +46,8 @@ bool AccelByteNetworkManager::RequestConnect(const FString& PeerId)
 				{
 					UE_LOG_ABNET(Log, TEXT("Selected TURN server : %s:%d"), *Result.Ip, Result.Port);
 
+					SelectedTurnServerRegion = *Result.Region;
+
 					FString TurnSecret;
 					FString TurnUsername;
 					if(!GConfig->GetString(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerSecret"), TurnSecret, GEngineIni))
@@ -262,12 +264,14 @@ void AccelByteNetworkManager::IncomingData(const FString& FromPeerId, const uint
 	}
 }
 
-void AccelByteNetworkManager::RTCConnected(const FString& PeerId) 
+void AccelByteNetworkManager::RTCConnected(const FString& PeerId, const EP2PConnectionType& P2PConnectionType)
 {
 	UE_LOG_ABNET(Log, TEXT("ICE connected: %s"), *PeerId);
 	FScopeLock ScopeLock(&LockObject);
 	PeerRequestConnectTime.Remove(PeerId);
 	OnWebRTCDataChannelConnectedDelegate.ExecuteIfBound(PeerId, true);
+
+	SendMetricData(P2PConnectionType);
 }
 
 void AccelByteNetworkManager::RTCClosed(const FString& PeerId) 
@@ -373,4 +377,28 @@ void AccelByteNetworkManager::OnICEConnectionErrorCallback(const FString& PeerId
 	{
 		PeerRequestConnectTime.Remove(PeerId);
 	}
+}
+
+void AccelByteNetworkManager::SendMetricData(const EP2PConnectionType& P2PConnectionType)
+{
+	// Host doesn't know turn server region, SendMetricData only get called from client
+	// therefore in host SelectedTurnServerRegion always empty and
+	// P2PConnectionType empty means it already connected previously 
+	if (SelectedTurnServerRegion.IsEmpty() || P2PConnectionType == EP2PConnectionType::None)
+	{
+		return;
+	}
+
+	UE_LOG_ABNET(Log, TEXT("Selected turn server region: %s"), *SelectedTurnServerRegion);
+	
+	ApiClientPtr->TurnManager.SendMetric(SelectedTurnServerRegion, P2PConnectionType,
+		FVoidHandler::CreateLambda([this]()
+	{
+		SelectedTurnServerRegion.Empty();
+	}),
+	FErrorHandler::CreateLambda([this](const int32 &ErrorCode, const FString &ErrorMessage)
+	{
+		SelectedTurnServerRegion.Empty();
+		UE_LOG_ABNET(Error, TEXT("Error sending metric data: %d %s"), ErrorCode, *ErrorMessage);
+	}));
 }
