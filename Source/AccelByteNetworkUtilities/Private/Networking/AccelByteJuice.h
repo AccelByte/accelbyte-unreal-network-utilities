@@ -8,13 +8,13 @@
 
 #include "AccelByteICEBase.h"
 #include "juice/juice.h"
-#include "HAL/ThreadingBase.h"
 #include "Dom/JsonObject.h"
 #include "Containers/Queue.h"
+#include "Models/AccelByteTurnModels.h"
 
 /*
  * Currently max char host name, username, and password is 64.
- * The example host will be: us-turn1.accelbyte.net, eu-turn2.accelbyte.net. 
+ * The example host will be: us-turn1.accelbyte.net, eu-turn2.accelbyte.net.
  */
 #define TURN_MAX_LENGTH 64
 
@@ -32,7 +32,7 @@ struct TurnConfigHelper
  * AccelByteJuice implement AccelByteICEBase using third party library LibJuice for ICE connection
  */
 
-class AccelByteJuice: public AccelByteICEBase 
+class AccelByteJuice: public AccelByteICEBase
 {
 public:
 	AccelByteJuice(const FString &PeerId);
@@ -55,7 +55,7 @@ public:
 	* @param Data to sent
 	* @param Count of the data to be sent
 	* @param BytesSent notify byte sent.
-	* 
+	*
 	* @return true when success
 	*/
 	virtual bool Send(const uint8* Data, int32 Count, int32& BytesSent) override;
@@ -88,13 +88,31 @@ private:
 	 */
 	bool bIsDescriptionReady = false;
 
+	/**
+	 * Stores host check timeout in seconds, this value is from DefaultEngine.ini
+	 * [AccelByteNetworkUtilities] HostCheckTimeout
+	 * Default to 10 seconds if config not found
+	 */
+	int32 HostCheckTimeout = 10;
+
+	FAccelByteModelsTurnServerCredential SelectedTurnServerCred;
+
+	EAccelBytePeerStatus PeerStatus = NotHosting;
+
+	FDateTime InitiateConnectionTime;
+
 	/*
-	 * Will save the remote Juice SDP when bIsDescriptionReady still false. And apply it when bIsDescriptionReady is true 
+	 * flag to indicate if still waiting for host to reply
+	 */
+	bool bIsCheckingHost = false;
+
+	/*
+	 * Will save the remote Juice SDP when bIsDescriptionReady still false. And apply it when bIsDescriptionReady is true
 	 */
 	TQueue<TSharedPtr<FJsonObject>> SdpQueue;
 
 	/*
-	* Will save the remote Juice Candidate when bIsDescriptionReady still false. And apply it when bIsDescriptionReady is true 
+	* Will save the remote Juice Candidate when bIsDescriptionReady still false. And apply it when bIsDescriptionReady is true
 	*/
 	TQueue<TSharedPtr<FJsonObject>> CandidateQueue;
 
@@ -107,7 +125,7 @@ private:
 	 * Store the latest juice state
 	 */
 	juice_state_t LastJuiceState = JUICE_STATE_DISCONNECTED;
-	
+
 	/**
 	 * @brief Create peer connection using defined Turn server
 	 *
@@ -137,6 +155,22 @@ private:
 	 * @brief Return the connection type based on selected remote candidate
 	 */
 	EP2PConnectionType GetP2PConnectionType() const;
+
+	/**
+	 * @brief Ticker for checking if peer is still hosting game or not before creating connection and trigger timeout
+	 * if there is no response from host after INITIATE_CONN_TIMEOUT_S. This ticker will shutdown after receiving
+	 * reply from host or after timeout
+	 *
+	 * @param DeltaTime of the loop
+	 */
+	bool Tick(float DeltaTime);
+
+	/**
+	 * @brief Update peer status based on message received from signaling
+	 *
+	 * @param Message message string from signaling
+	 */
+	void UpdatePeerStatus(const FString &Message);
 };
 
 #endif

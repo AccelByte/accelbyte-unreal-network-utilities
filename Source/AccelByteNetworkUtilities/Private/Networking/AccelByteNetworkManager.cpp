@@ -10,25 +10,26 @@
 #include "AccelByteJuice.h"
 #include "AccelByteNetworkUtilitiesLog.h"
 #include "Api/AccelByteTurnManagerApi.h"
+#include "AccelByteSignalingConstants.h"
 
-struct ICEData 
+struct ICEData
 {
 	FString PeerId;
 	TArray<uint8> Data;
-	ICEData(const FString& PeerId, const TArray<uint8>& Data) :PeerId(PeerId), Data(Data) 
+	ICEData(const FString& PeerId, const TArray<uint8>& Data) :PeerId(PeerId), Data(Data)
 	{
 	}
 };
 
-AccelByteNetworkManager& AccelByteNetworkManager::Instance() 
+AccelByteNetworkManager& AccelByteNetworkManager::Instance()
 {
 	static AccelByteNetworkManager AccelByteNetworkManagerInstance;
 	return AccelByteNetworkManagerInstance;
 }
 
-bool AccelByteNetworkManager::RequestConnect(const FString& PeerId) 
+bool AccelByteNetworkManager::RequestConnect(const FString& PeerId)
 {
-	if (PeerIdToICEConnectionMap.Contains(PeerId)) 
+	if (PeerIdToICEConnectionMap.Contains(PeerId))
 	{
 		if(PeerIdToICEConnectionMap[PeerId]->IsConnected())
 		{
@@ -42,7 +43,7 @@ bool AccelByteNetworkManager::RequestConnect(const FString& PeerId)
 	if(bIsUseTurnManager)
 	{
 		ApiClientPtr->TurnManager.GetClosestTurnServer(THandler<FAccelByteModelsTurnServer>::CreateLambda(
-				[this, PeerId](const FAccelByteModelsTurnServer &Result)
+			[this, PeerId](const FAccelByteModelsTurnServer &Result)
 				{
 					UE_LOG_ABNET(Log, TEXT("Selected TURN server : %s:%d"), *Result.Ip, Result.Port);
 
@@ -85,6 +86,7 @@ bool AccelByteNetworkManager::RequestConnect(const FString& PeerId)
 				{
 					UE_LOG_ABNET(Error, TEXT("Error getting turn server from turn manager: %s"), *ErrorMessage);
 					OnWebRTCDataChannelConnectedDelegate.ExecuteIfBound(PeerId, false);
+					OnWebRTCRequestConnectFinishedDelegate.ExecuteIfBound(PeerId, FailedGettingTurnServer);
 				}));
 	}
 	else
@@ -98,19 +100,19 @@ bool AccelByteNetworkManager::RequestConnect(const FString& PeerId)
 		{
 			UE_LOG_ABNET(Error, TEXT("TurnServerUrl was missing in DefaultEngine.ini"));
 		}
-	
+
 		if(!GConfig->GetInt(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerPort"), TurnPort, GEngineIni))
 		{
 			UE_LOG_ABNET(Error, TEXT("TurnServerPort was missing in DefaultEngine.ini"));
 		}
-	
+
 		// Username password possible empty if no authentication required on TURN server
 		GConfig->GetString(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerUsername"), TurnUserName, GEngineIni);
 		GConfig->GetString(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerPassword"), TurnPassword, GEngineIni);
 		TSharedPtr<AccelByteICEBase> Rtc = CreateNewConnection(PeerId);
 		PeerIdToICEConnectionMap.Add(PeerId, Rtc);
 		Rtc->RequestConnect(TurnHost, TurnPort, TurnUserName, TurnPassword);
-	}	
+	}
 	return true;
 }
 
@@ -125,7 +127,7 @@ void AccelByteNetworkManager::Setup(AccelByte::FApiClientPtr InApiClientPtr)
 	{
 		Signaling->Connect();
 	}
-	
+
 	Signaling->SetOnWebRTCSignalingMessage(AccelByteSignalingBase::OnWebRTCSignalingMessage::CreateRaw(this, &AccelByteNetworkManager::OnSignalingMessage));
 
 	// setup tick
@@ -133,9 +135,9 @@ void AccelByteNetworkManager::Setup(AccelByte::FApiClientPtr InApiClientPtr)
 	FTickerAlias::GetCoreTicker().AddTicker(TickerDelegate, 0.5);
 }
 
-bool AccelByteNetworkManager::SendTo(const uint8* Data, int32 Count, int32& BytesSent, const FString& PeerId) 
+bool AccelByteNetworkManager::SendTo(const uint8* Data, int32 Count, int32& BytesSent, const FString& PeerId)
 {
-	if (!PeerIdToICEConnectionMap.Contains(PeerId)) 
+	if (!PeerIdToICEConnectionMap.Contains(PeerId))
 	{
 		return false;
 	}
@@ -143,17 +145,17 @@ bool AccelByteNetworkManager::SendTo(const uint8* Data, int32 Count, int32& Byte
 	return Rtc->Send(Data, Count, BytesSent);
 }
 
-bool AccelByteNetworkManager::RecvFrom(uint8* Data, int32 BufferSize, int32& BytesRead, FString& PeerId) 
+bool AccelByteNetworkManager::RecvFrom(uint8* Data, int32 BufferSize, int32& BytesRead, FString& PeerId)
 {
 	bool bIsReadSuccess = false;
-	if (!IsDataReadyToRead()) 
+	if (!IsDataReadyToRead())
 	{
 		const bool bIsDequeueSuccess = QueueDatas.Dequeue(LastReadData);
-		if (bIsDequeueSuccess) 
+		if (bIsDequeueSuccess)
 		{
 			Offset = 0;
 		}
-		else 
+		else
 		{
 			BytesRead = 0;
 			Offset = -1;
@@ -167,18 +169,18 @@ bool AccelByteNetworkManager::RecvFrom(uint8* Data, int32 BufferSize, int32& Byt
 		return false;
 	}
 	const int Num = LastReadData->Data.Num();
-	if (Num > 0) 
+	if (Num > 0)
 	{
 		bIsReadSuccess = true;
 		PeerId = LastReadData->PeerId;
 		const int32 LastOffset = Offset;
 		const int32 RealNum = Num - Offset;
-		if (BufferSize >= RealNum) 
+		if (BufferSize >= RealNum)
 		{
 			BytesRead = RealNum;
 			Offset = -1;
 		}
-		else 
+		else
 		{
 			Offset += BufferSize;
 			BytesRead = BufferSize;
@@ -192,15 +194,15 @@ bool AccelByteNetworkManager::RecvFrom(uint8* Data, int32 BufferSize, int32& Byt
 	return bIsReadSuccess;
 }
 
-bool AccelByteNetworkManager::HasPendingData(uint32& PendingDataSize) 
+bool AccelByteNetworkManager::HasPendingData(uint32& PendingDataSize)
 {
-	if (LastReadData.IsValid()) 
+	if (LastReadData.IsValid())
 	{
 		PendingDataSize = LastReadData->Data.Num();
 		return true;
 	}
 	TSharedPtr<ICEData> *Item = QueueDatas.Peek();
-	if (Item != nullptr) 
+	if (Item != nullptr)
 	{
 		PendingDataSize = Item->Get()->Data.Num();
 		return true;
@@ -209,10 +211,10 @@ bool AccelByteNetworkManager::HasPendingData(uint32& PendingDataSize)
 	return false;
 }
 
-void AccelByteNetworkManager::ClosePeerConnection(const FString& PeerId) 
+void AccelByteNetworkManager::ClosePeerConnection(const FString& PeerId)
 {
 	UE_LOG_ABNET(Log, TEXT("Closing ICE connection to: %s"), *PeerId);
-	if (PeerIdToICEConnectionMap.Contains(PeerId)) 
+	if (PeerIdToICEConnectionMap.Contains(PeerId))
 	{
 		PeerIdToICEConnectionMap[PeerId]->ClosePeerConnection();
 		PeerIdToICEConnectionMap.Remove(PeerId);
@@ -220,10 +222,10 @@ void AccelByteNetworkManager::ClosePeerConnection(const FString& PeerId)
 	}
 }
 
-void AccelByteNetworkManager::CloseAllPeerConnections() 
+void AccelByteNetworkManager::CloseAllPeerConnections()
 {
 	TArray<TSharedPtr<AccelByteICEBase>> ToDestroy;
-	for (const auto& pair : PeerIdToICEConnectionMap) 
+	for (const auto& pair : PeerIdToICEConnectionMap)
 	{
 		ToDestroy.Add(pair.Value);
 	}
@@ -235,15 +237,32 @@ void AccelByteNetworkManager::CloseAllPeerConnections()
 	OnWebRTCDataChannelClosedDelegate.ExecuteIfBound("");
 }
 
-bool AccelByteNetworkManager::IsDataReadyToRead() const 
+void AccelByteNetworkManager::EnableHosting()
+{
+	bIsHosting = true;
+}
+
+void AccelByteNetworkManager::DisableHosting()
+{
+	bIsHosting = false;
+}
+
+bool AccelByteNetworkManager::IsDataReadyToRead() const
 {
 	return Offset >= 0;
 }
 
-void AccelByteNetworkManager::OnSignalingMessage(const FString& PeerId, const FString& Message) 
+void AccelByteNetworkManager::OnSignalingMessage(const FString& PeerId, const FString& Message)
 {
-	TSharedPtr<AccelByteICEBase> Conn; 
-	if (!PeerIdToICEConnectionMap.Contains(PeerId)) 
+	if (Message.Equals(HOST_CHECK_MESSAGE))
+	{
+		Signaling->SendMessage(PeerId,
+			FString::Printf(TEXT("%s%s%d"), HOST_CHECK_MESSAGE, HOST_CHECK_REPLY_DELIMITER, bIsHosting));
+		return;
+	}
+
+	TSharedPtr<AccelByteICEBase> Conn;
+	if (!PeerIdToICEConnectionMap.Contains(PeerId))
 	{
 		Conn = CreateNewConnection(PeerId);
 		PeerIdToICEConnectionMap.Add(PeerId, Conn);
@@ -256,7 +275,7 @@ void AccelByteNetworkManager::OnSignalingMessage(const FString& PeerId, const FS
 	Conn->OnSignalingMessage(Message);
 }
 
-void AccelByteNetworkManager::IncomingData(const FString& FromPeerId, const uint8* Data, int32 Count) 
+void AccelByteNetworkManager::IncomingData(const FString& FromPeerId, const uint8* Data, int32 Count)
 {
 	if(Count > 0)
 	{
@@ -270,23 +289,24 @@ void AccelByteNetworkManager::RTCConnected(const FString& PeerId, const EP2PConn
 	FScopeLock ScopeLock(&LockObject);
 	PeerRequestConnectTime.Remove(PeerId);
 	OnWebRTCDataChannelConnectedDelegate.ExecuteIfBound(PeerId, true);
+	OnWebRTCRequestConnectFinishedDelegate.ExecuteIfBound(PeerId, Success);
 
 	SendMetricData(P2PConnectionType);
 }
 
-void AccelByteNetworkManager::RTCClosed(const FString& PeerId) 
+void AccelByteNetworkManager::RTCClosed(const FString& PeerId)
 {
 	UE_LOG_ABNET(Log, TEXT("ICE closed: %s"), *PeerId);
 	FScopeLock ScopeLock(&LockObject);
 	PeerRequestConnectTime.Remove(PeerId);
-	if (PeerIdToICEConnectionMap.Contains(PeerId)) 
+	if (PeerIdToICEConnectionMap.Contains(PeerId))
 	{
 		ScheduleToDestroy.Enqueue(PeerId);
 		OnWebRTCDataChannelClosedDelegate.ExecuteIfBound(PeerId);
 	}
 }
 
-TSharedPtr<AccelByteICEBase> AccelByteNetworkManager::CreateNewConnection(const FString& PeerId) 
+TSharedPtr<AccelByteICEBase> AccelByteNetworkManager::CreateNewConnection(const FString& PeerId)
 {
 #ifdef LIBJUICE
 	TSharedPtr<AccelByteICEBase> Rtc = MakeShared<AccelByteJuice>(PeerId);
@@ -301,7 +321,7 @@ TSharedPtr<AccelByteICEBase> AccelByteNetworkManager::CreateNewConnection(const 
 	{
 		FScopeLock ScopeLock(&LockObject);
 		PeerRequestConnectTime.Add(PeerId, FDateTime::Now());
-	}	
+	}
 	return Rtc;
 }
 
@@ -326,15 +346,14 @@ bool AccelByteNetworkManager::Tick(float /*DeltaTime*/)
 			FString key = ToRemove[i];
 
 			PeerRequestConnectTime.Remove(key);
-			if (PeerIdToICEConnectionMap.Contains(key)) 
+			if (PeerIdToICEConnectionMap.Contains(key))
 			{
 				PeerIdToICEConnectionMap[key]->ClosePeerConnection();
 				PeerIdToICEConnectionMap.Remove(key);
 				OnWebRTCDataChannelClosedDelegate.ExecuteIfBound(key);
-				OnWebRTCDataChannelConnectedDelegate.ExecuteIfBound(key, false);
 			}
 		}
-	}	
+	}
 
 	FString PeerToDestroy;
 	while(ScheduleToDestroy.Dequeue(PeerToDestroy))
@@ -362,16 +381,17 @@ void AccelByteNetworkManager::RequestCredentialAndConnect(const FString& PeerId,
 		{
 			UE_LOG_ABNET(Error, TEXT("Error getting turn server credential: %s"), *ErrorMessage);
 			OnWebRTCDataChannelConnectedDelegate.ExecuteIfBound(PeerId, false);
+			OnWebRTCRequestConnectFinishedDelegate.ExecuteIfBound(PeerId, FailedGettingTurnServerCredential);
 		}));
 }
 
-void AccelByteNetworkManager::OnICEConnectionErrorCallback(const FString& PeerId, const FString& ErrorMessage)
+void AccelByteNetworkManager::OnICEConnectionErrorCallback(const FString& PeerId, const EAccelByteP2PConnectionStatus& Status)
 {
 	FScopeLock ScopeLock(&LockObject);
-	OnIceConnectionErrorDelegate.ExecuteIfBound(PeerId, ErrorMessage);
 	OnWebRTCDataChannelConnectedDelegate.ExecuteIfBound(PeerId, false);
-	
-	// this need to be destroyed on next tick	
+	OnWebRTCRequestConnectFinishedDelegate.ExecuteIfBound(PeerId, Status);
+
+	// this need to be destroyed on next tick
 	ScheduleToDestroy.Enqueue(PeerId);
 	if(PeerRequestConnectTime.Contains(PeerId))
 	{
@@ -383,14 +403,14 @@ void AccelByteNetworkManager::SendMetricData(const EP2PConnectionType& P2PConnec
 {
 	// Host doesn't know turn server region, SendMetricData only get called from client
 	// therefore in host SelectedTurnServerRegion always empty and
-	// P2PConnectionType empty means it already connected previously 
+	// P2PConnectionType empty means it already connected previously
 	if (SelectedTurnServerRegion.IsEmpty() || P2PConnectionType == EP2PConnectionType::None)
 	{
 		return;
 	}
 
 	UE_LOG_ABNET(Log, TEXT("Selected turn server region: %s"), *SelectedTurnServerRegion);
-	
+
 	ApiClientPtr->TurnManager.SendMetric(SelectedTurnServerRegion, P2PConnectionType,
 		FVoidHandler::CreateLambda([this]()
 	{

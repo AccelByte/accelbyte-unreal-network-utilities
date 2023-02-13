@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.10.0](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/2.10.0%0D2.9.0) (2023-02-13)
+
+
+### Features
+
+* add OnICERequestConnectFinished delegate and deprecate OnICEConnected delegate ([3528266](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/35282664575c3b00d231946480d2c84f316effac))
+* check if peer still hosting before initiate connection ([7b78465](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/7b78465fe112695135576350a4c06b5df186af24))
+
 ## [2.9.0](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/2.9.0%0D2.8.0) (2023-01-30)
 
 ## [2.8.0](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/2.8.0%0D2.7.0) (2022-12-05)

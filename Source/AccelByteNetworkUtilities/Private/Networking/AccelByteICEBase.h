@@ -5,6 +5,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "AccelByteNetworkingStatus.h"
 #include "Dom/JsonObject.h"
 #include "Models/AccelByteTurnModels.h"
 
@@ -29,9 +30,9 @@ public:
 	* @brief Delegate when ICE data channel has error connection
 	*
 	* @param Peer id of the target
-	* @param Error message
+	* @param Status of the connection
 	*/
-	DECLARE_DELEGATE_TwoParams(OnICEDataChannelConnectionError, const FString&, const FString&);
+	DECLARE_DELEGATE_TwoParams(OnICEDataChannelConnectionError, const FString&, const EAccelByteP2PConnectionStatus&);
 
 	/**
 	* @brief Delegate when ICE data channel is closed
@@ -49,18 +50,18 @@ public:
 	*/
 	DECLARE_DELEGATE_ThreeParams(OnICEDataReady, const FString&, const uint8*, int32);
 
-	AccelByteICEBase() 
-	{ 
-	}
-	
-	AccelByteICEBase(const FString &PeerId): PeerId(PeerId) 
-	{ 
-	}
-	
-	virtual ~AccelByteICEBase() 
+	AccelByteICEBase()
 	{
 	}
-	
+
+	AccelByteICEBase(const FString &PeerId): PeerId(PeerId)
+	{
+	}
+
+	virtual ~AccelByteICEBase()
+	{
+	}
+
 	/**
 	* @brief Process signaling message
 	*
@@ -79,7 +80,7 @@ public:
 	* @param Data to sent
 	* @param Count of the data to be sent
 	* @param BytesSent notify byte sent.
-	* 
+	*
 	* @return true when success
 	*/
 	virtual bool Send(const uint8* Data, int32 Count, int32& BytesSent) = 0;
@@ -145,7 +146,7 @@ public:
 	 *
 	 * @return true if connected
 	 */
-	bool IsConnected() const 
+	bool IsConnected() const
 	{
 		return bIsConnected;
 	}
@@ -171,7 +172,7 @@ protected:
 
 	// AccelByte user ID of the remote peer
 	FString PeerId;
-	
+
 	OnICEDataChannelConnected OnICEDataChannelConnectedDelegate;
 	OnICEDataChannelConnectionError OnICEDataChannelConnectionErrorDelegate;
 	OnICEDataChannelClosed OnICEDataChannelClosedDelegate;
@@ -190,29 +191,29 @@ public:
 	AccelByteNullICEConnection()
 	{
 	}
-	
+
 	AccelByteNullICEConnection(const FString &PeerId)
 	{
 	}
-	
+
 	virtual ~AccelByteNullICEConnection()
 	{
 	}
-	
+
 	virtual void OnSignalingMessage(const FString& Message) override
 	{
 	}
-	
+
 	virtual bool RequestConnect(const FString &ServerUrl, int ServerPort, const FString &Username, const FString &Password) override
 	{
 		return true;
 	}
-	
+
 	virtual bool Send(const uint8* Data, int32 Count, int32& BytesSent) override
 	{
 		return true;
 	}
-	
+
 	virtual void ClosePeerConnection() override
 	{
 	}

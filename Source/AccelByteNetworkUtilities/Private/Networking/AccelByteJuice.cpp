@@ -6,13 +6,14 @@
 
 #include "AccelByteJuice.h"
 #include "AccelByteSignalingBase.h"
-#include "AccelByteNetworkUtilitiesConstant.h"
 #include "Dom/JsonObject.h"
 #include "AccelByteNetworkUtilitiesLog.h"
 #include "Async/TaskGraphInterfaces.h" 
 #include "Misc/Base64.h"
 #include "Misc/CommandLine.h"
 #include "HAL/UnrealMemory.h"
+#include "Core/AccelByteDefines.h"
+#include "AccelByteSignalingConstants.h"
 
 #define DO_TASK(task) FFunctionGraphTask::CreateAndDispatchWhenReady(task, TStatId(), nullptr);
 #define MAX_ADDRESS_LENGTH 256
@@ -42,10 +43,21 @@ AccelByteJuice::AccelByteJuice(const FString& PeerId): AccelByteICEBase(PeerId)
 	{
 		juice_set_log_level(JUICE_LOG_LEVEL_NONE);
 	}
+
+	if (!GConfig->GetInt(TEXT("AccelByteNetworkUtilities"), TEXT("HostCheckTimeout"), HostCheckTimeout, GEngineIni))
+	{
+		UE_LOG_ABNET(Log, TEXT("Using default HostCheckTimeout (%d seconds) because its missing from DefaultEngine.ini"), HostCheckTimeout);
+	}
 }
 
 void AccelByteJuice::OnSignalingMessage(const FString& Message)
 {
+	if (Message.Contains(FString::Printf(TEXT("%s%s"), HOST_CHECK_MESSAGE, HOST_CHECK_REPLY_DELIMITER)))
+	{
+		UpdatePeerStatus(Message);
+		return;
+	}
+	
 	//Signaling message encoded to base64 string because sometimes it having special character that I am not sure if it supported by normal json string
 	FString Base64Decoded;
 	FBase64::Decode(Message, Base64Decoded);
@@ -55,25 +67,28 @@ void AccelByteJuice::OnSignalingMessage(const FString& Message)
 
 bool AccelByteJuice::RequestConnect(const FString &ServerUrl, int ServerPort, const FString &Username, const FString &Password)
 {
-	bIsInitiator = true;	
-	
-	TSharedRef<FJsonObject> Json = MakeShared<FJsonObject>();
-	Json->SetStringField(TEXT("type"), TEXT("ice"));
-	Json->SetStringField(TEXT("host"), ServerUrl);
-	Json->SetStringField(TEXT("username"), Username);
-	Json->SetStringField(TEXT("password"), Password);
-	Json->SetNumberField(TEXT("port"), ServerPort);	
-	Json->SetStringField(TEXT("server_type"), TEXT("offer"));
-	if (Signaling->IsConnected())
+	InitiateConnectionTime = FDateTime::Now();
+
+	if (!Signaling->IsConnected())
 	{
-		FString JsonString;
-		JsonToString(JsonString, Json);
-		const FString Base64String = FBase64::Encode(JsonString);
-		Signaling->SendMessage(PeerId, Base64String);
-		CreatePeerConnection(ServerUrl, Username, Password, ServerPort);
-		return true;
+		UE_LOG_ABNET(Error, TEXT("Signaling server is disconnected"));
+		OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerId, SignalingServerDisconnected);
+		return false;
 	}
-	return false;
+
+	bIsInitiator = true;
+	bIsCheckingHost = true;
+
+	SelectedTurnServerCred = FAccelByteModelsTurnServerCredential{
+		ServerUrl, ServerPort, FString(), Username, Password};
+
+	Signaling->SendMessage(PeerId, HOST_CHECK_MESSAGE);
+	PeerStatus = WaitingReply;
+
+	const FTickerDelegate TickerDelegate = FTickerDelegate::CreateRaw(this, &AccelByteJuice::Tick);
+	FTickerAlias::GetCoreTicker().AddTicker(TickerDelegate, 0.5);
+
+	return true;
 }
 
 bool AccelByteJuice::Send(const uint8* Data, int32 Count, int32& BytesSent)
@@ -256,7 +271,8 @@ void AccelByteJuice::HandleMessage(TSharedPtr<FJsonObject> Json)
 				}
 				else
 				{
-					OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerId, "Juice gather candidates failed");
+					UE_LOG_ABNET(Error, TEXT("Failed gathering juice candidate"));
+					OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerId, JuiceGatherFailed);
 				}
 			}));
 		}
@@ -324,7 +340,8 @@ void AccelByteJuice::SetupLocalDescription()
 	}
 	else
 	{
-		OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerId, "Juice get local description failed");
+		UE_LOG_ABNET(Error, TEXT("Failed getting juice local description"));
+		OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerId, JuiceGetLocalDescriptionFailed);
 	}
 }
 
@@ -348,7 +365,8 @@ void AccelByteJuice::JuiceStateChanged(juice_state_t State)
 	}
 	else if(State == JUICE_STATE_FAILED)
 	{
-		OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerId, "Juice connection failed");
+		UE_LOG_ABNET(Error, TEXT("Juice connection failed"));
+		OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerId, JuiceConnectionFailed);
 	}
 	else if(State == JUICE_STATE_DISCONNECTED)
 	{
@@ -426,6 +444,74 @@ EP2PConnectionType AccelByteJuice::GetP2PConnectionType() const
 	UE_LOG_ABNET(Log, TEXT("Connection type: %s"), *UEnum::GetValueAsString(SelectedCandidateType));
 
 	return SelectedCandidateType;
+}
+
+bool AccelByteJuice::Tick(float DeltaTime)
+{
+	if (bIsCheckingHost)
+	{
+		if (FDateTime::Now().ToUnixTimestamp() - InitiateConnectionTime.ToUnixTimestamp() > HostCheckTimeout)
+		{
+			UE_LOG_ABNET(Error, TEXT("Failed initiating connection to peer, timeout after %d seconds"), HostCheckTimeout);
+			bIsCheckingHost = false;
+			OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerId, HostResponseTimeout);
+			return false;
+		}
+
+		switch (PeerStatus)
+		{
+			case WaitingReply:
+				return true;
+
+			case Hosting:
+				{
+					const TSharedRef<FJsonObject> Json = MakeShared<FJsonObject>();
+					Json->SetStringField(TEXT("type"), TEXT("ice"));
+					Json->SetStringField(TEXT("host"), SelectedTurnServerCred.Ip);
+					Json->SetStringField(TEXT("username"), SelectedTurnServerCred.Username);
+					Json->SetStringField(TEXT("password"), SelectedTurnServerCred.Password);
+					Json->SetNumberField(TEXT("port"), SelectedTurnServerCred.Port);	
+					Json->SetStringField(TEXT("server_type"), TEXT("offer"));
+
+					FString JsonString;
+					JsonToString(JsonString, Json);
+					const FString Base64String = FBase64::Encode(JsonString);
+					Signaling->SendMessage(PeerId, Base64String);
+					CreatePeerConnection(SelectedTurnServerCred.Ip, SelectedTurnServerCred.Username,
+						SelectedTurnServerCred.Password, SelectedTurnServerCred.Port);
+
+					break;
+				}
+
+			case NotHosting:
+				{
+					UE_LOG_ABNET(Error, TEXT("Peer is not hosting"));
+					OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerId, PeerIsNotHosting);
+					break;
+				}
+		}
+
+		bIsCheckingHost = false;
+	}
+
+	return false;
+}
+
+void AccelByteJuice::UpdatePeerStatus(const FString& Message)
+{
+	TArray<FString> ParsedStrings;
+	Message.ParseIntoArray(ParsedStrings, HOST_CHECK_REPLY_DELIMITER);
+
+	const bool bIsPeerHosting = ParsedStrings.Last().ToBool();
+
+	if (bIsPeerHosting)
+	{
+		PeerStatus = Hosting;
+	}
+	else
+	{
+		PeerStatus = NotHosting;
+	}
 }
 
 #endif

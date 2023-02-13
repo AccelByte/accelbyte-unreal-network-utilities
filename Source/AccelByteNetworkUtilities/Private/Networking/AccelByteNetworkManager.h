@@ -4,7 +4,7 @@
 
 #pragma once
 #include "Core/AccelByteApiClient.h"
-#include "Core/AccelByteMultiRegistry.h"
+#include "AccelByteNetworkingStatus.h"
 
 class AccelByteICEBase;
 class AccelByteSignalingBase;
@@ -15,7 +15,7 @@ struct ICEData;
 /**
  * @brief Manager for ICE connection
  */
-class AccelByteNetworkManager 
+class AccelByteNetworkManager
 {
 
 public:
@@ -28,19 +28,19 @@ public:
 	DECLARE_DELEGATE_TwoParams(OnWebRTCDataChannelConnected, const FString&, bool);
 
 	/**
-	 * @brief Delegate when any ICE connection closed
+	 * @brief Delegate when request connect done
 	 *
-	 * @param String peer id of the remote connection
+	 * @param param1 peer id of the remote
+	 * @param param2 enum indicating status of the connection
 	 */
-	DECLARE_DELEGATE_OneParam(OnWebRTCDataChannelClosed, const FString&);
+	DECLARE_DELEGATE_TwoParams(OnWebRTCRequestConnectFinished, const FString&, const EAccelByteP2PConnectionStatus&);
 
 	/**
 	 * @brief Delegate when any ICE connection closed
 	 *
 	 * @param String peer id of the remote connection
-	 * @param Error string
 	 */
-	DECLARE_DELEGATE_TwoParams(OnICEConnectionError, const FString&, const FString&);
+	DECLARE_DELEGATE_OneParam(OnWebRTCDataChannelClosed, const FString&);
 
 	/**
 	 * @brief Singleton instance of the manager
@@ -86,7 +86,7 @@ public:
 	 * @brief Check if any data available to read
 	 *
 	 * @param PendingDataSize to store the length of available data to read
-	 * 
+	 *
 	 * @return true if any data available
 	*/
 	bool HasPendingData(uint32& PendingDataSize);
@@ -103,14 +103,24 @@ public:
 	*/
 	void CloseAllPeerConnections();
 
+	/**
+	 * @brief set to indicate the player is hosting the game
+	 */
+	void EnableHosting();
+
+	/**
+	 * @brief set to indicate the player is no longer hosting the game
+	 */
+	void DisableHosting();
+
 	OnWebRTCDataChannelConnected OnWebRTCDataChannelConnectedDelegate;
+	OnWebRTCRequestConnectFinished OnWebRTCRequestConnectFinishedDelegate;
 	OnWebRTCDataChannelClosed OnWebRTCDataChannelClosedDelegate;
-	OnICEConnectionError OnIceConnectionErrorDelegate;
 
 private:
 	// Api client to communicate with Accelbyte services
 	AccelByte::FApiClientPtr ApiClientPtr;
-	
+
 	//Instance of the Signaling client
 	TSharedPtr<AccelByteSignalingBase> Signaling;
 
@@ -143,6 +153,9 @@ private:
 
 	// Store selected turn manager region for metric purpose, only updated by client
 	FString SelectedTurnServerRegion;
+
+	// Store current hosting state of network manager
+	bool bIsHosting = false;
 
 	/**
 	 * @brief Check whatever there is data ready to read from cached data (LastReadData)
@@ -209,9 +222,9 @@ private:
 	 * @brief Callback when any error ICE connection from ICEBase
 	 *
 	 * @param PeerId user id of the peer
-	 * @param ErrorMessage error message
+	 * @param Status status of the connection
 	 */
-	void OnICEConnectionErrorCallback(const FString &PeerId, const FString &ErrorMessage);
+	void OnICEConnectionErrorCallback(const FString &PeerId, const EAccelByteP2PConnectionStatus &Status);
 
 	/**
 	 * @brief Send info about P2P connection type and selected turn server region to BE

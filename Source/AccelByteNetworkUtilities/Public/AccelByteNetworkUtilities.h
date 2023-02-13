@@ -5,6 +5,7 @@
 #pragma once
 
 #include "Core/AccelByteMultiRegistry.h"
+#include "AccelByteNetworkingStatus.h"
 
 class ACCELBYTENETWORKUTILITIES_API FAccelByteNetworkUtilitiesModule : public IModuleInterface
 {
@@ -18,16 +19,24 @@ public:
 	DECLARE_DELEGATE_TwoParams(OnICEConnected, const FString&, bool);
 
 	/**
+	 * @brief Delegate when request connect done
+	 *
+	 * @param param1 peer id of the remote
+	 * @param param2 enum indicating status of the connection
+	 */
+	DECLARE_DELEGATE_TwoParams(OnICERequestConnectFinished, const FString&, const EAccelByteP2PConnectionStatus&);
+
+	/**
 	* @brief Delegate when any ICE connection closed
 	*
 	* @param String peer id of the remote connection
 	*/
 	DECLARE_DELEGATE_OneParam(OnICEClosed, const FString&);
-	
+
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
 	static FAccelByteNetworkUtilitiesModule& Get();
-	
+
 	/**
 	 * @brief Setup the network manager before use
 	 *
@@ -50,6 +59,13 @@ public:
 	void RegisterICEConnectedDelegate(OnICEConnected Delegate);
 
 	/**
+	 * @brief Register delegate after request connect finished
+	 *
+	 * @param Delegate to register
+	 */
+	void RegisterICERequestConnectFinishedDelegate(OnICERequestConnectFinished Delegate);
+
+	/**
 	 * @brief Register connection delegate
 	 *
 	 * @param Delegate to register
@@ -70,4 +86,14 @@ public:
 	* @brief Use default platform socket subsystem and unregister accelbyte socket subsystem
 	*/
 	void UnregisterDefaultSocketSubsystem();
+
+	/**
+	 * @brief set to indicate the player is hosting the game
+	 */
+	void EnableHosting();
+
+	/**
+	 * @brief set to indicate the player is no longer hosting the game
+	 */
+	void DisableHosting();
 };

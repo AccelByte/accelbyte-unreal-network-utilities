@@ -1,7 +1,6 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "AccelByteNetworkUtilities.h"
-#include "Core.h"
 #include "Modules/ModuleManager.h"
 #include "AccelByteNetworkUtilitiesLog.h"
 #include "SocketSubsystemModule.h"
@@ -44,7 +43,7 @@ void FAccelByteNetworkUtilitiesModule::StartupModule()
 	{
 		UE_LOG_ABNET(Log, TEXT("Can not register AccelByte socket subsystem: %s"), *Error);
 	}
-	
+
 #endif //LIBJUICE
 }
 
@@ -54,7 +53,7 @@ void FAccelByteNetworkUtilitiesModule::ShutdownModule()
 	if(LibICEHandle)
 	{
 		FPlatformProcess::FreeDllHandle(LibICEHandle);
-		LibICEHandle = nullptr;		
+		LibICEHandle = nullptr;
 	}
 }
 
@@ -75,7 +74,14 @@ void FAccelByteNetworkUtilitiesModule::RequestConnect(const FString& PeerId)
 
 void FAccelByteNetworkUtilitiesModule::RegisterICEConnectedDelegate(OnICEConnected Delegate)
 {
+	FReport::LogDeprecated(FString(__FUNCTION__),
+		TEXT("OnICEConnected delegate is deprecated - please use OnICERequestConnectFinished delegate"));
 	AccelByteNetworkManager::Instance().OnWebRTCDataChannelConnectedDelegate = Delegate;
+}
+
+void FAccelByteNetworkUtilitiesModule::RegisterICERequestConnectFinishedDelegate(OnICERequestConnectFinished Delegate)
+{
+	AccelByteNetworkManager::Instance().OnWebRTCRequestConnectFinishedDelegate = Delegate;
 }
 
 void FAccelByteNetworkUtilitiesModule::RegisterICEClosedDelegate(OnICEClosed Delegate)
@@ -100,7 +106,7 @@ void FAccelByteNetworkUtilitiesModule::RegisterDefaultSocketSubsystem()
 	{
 		SSS.RegisterSocketSubsystem(ACCELBYTE_SUBSYSTEM, SocketSubsystem, true);
 		UE_LOG_ABNET(Log, TEXT("AccelByte socket subsystem registered as default"));
-	}	
+	}
 }
 
 void FAccelByteNetworkUtilitiesModule::UnregisterDefaultSocketSubsystem()
@@ -110,6 +116,16 @@ void FAccelByteNetworkUtilitiesModule::UnregisterDefaultSocketSubsystem()
 	SSS.RegisterSocketSubsystem(PLATFORM_SOCKETSUBSYSTEM, PlatformSocketSubsystem, true);
 }
 
+void FAccelByteNetworkUtilitiesModule::EnableHosting()
+{
+	AccelByteNetworkManager::Instance().EnableHosting();
+}
+
+void FAccelByteNetworkUtilitiesModule::DisableHosting()
+{
+	AccelByteNetworkManager::Instance().DisableHosting();
+}
+
 #undef LOCTEXT_NAMESPACE
-	
+
 IMPLEMENT_MODULE(FAccelByteNetworkUtilitiesModule, AccelByteNetworkUtilities)
