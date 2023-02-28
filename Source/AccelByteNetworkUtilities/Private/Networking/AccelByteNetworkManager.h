@@ -6,6 +6,8 @@
 #include "Core/AccelByteApiClient.h"
 #include "AccelByteNetworkingStatus.h"
 
+using namespace NetworkUtilities;
+
 class AccelByteICEBase;
 class AccelByteSignalingBase;
 
@@ -33,7 +35,7 @@ public:
 	 * @param param1 peer id of the remote
 	 * @param param2 enum indicating status of the connection
 	 */
-	DECLARE_DELEGATE_TwoParams(OnWebRTCRequestConnectFinished, const FString&, const EAccelByteP2PConnectionStatus&);
+	DECLARE_DELEGATE_TwoParams(OnWebRTCRequestConnectFinished, const FString&, const NetworkUtilities::EAccelByteP2PConnectionStatus&);
 
 	/**
 	 * @brief Delegate when any ICE connection closed
@@ -118,7 +120,7 @@ public:
 	OnWebRTCDataChannelClosed OnWebRTCDataChannelClosedDelegate;
 
 private:
-	// Api client to communicate with Accelbyte services
+	// Api client to communicate with AccelByte services
 	AccelByte::FApiClientPtr ApiClientPtr;
 
 	//Instance of the Signaling client
@@ -133,7 +135,7 @@ private:
 	//store ICE on next tick schedule
 	TQueue<FString, EQueueMode::Mpsc> ScheduleToDestroy;
 
-	//for mutext lock
+	//for mutex lock
 	FCriticalSection LockObject;
 
 	/*
@@ -165,7 +167,7 @@ private:
 	bool IsDataReadyToRead() const;
 
 	/**
-	 * @brief Handle message when any signaling message from accelbyte lobby service
+	 * @brief Handle message when any signaling message from AccelByte lobby service
 	 *
 	 * @param PeerId Peer id where is this message coming from
 	 * @param Message Signaling message in Json

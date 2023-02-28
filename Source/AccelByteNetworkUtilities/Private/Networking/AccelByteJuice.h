@@ -12,6 +12,8 @@
 #include "Containers/Queue.h"
 #include "Models/AccelByteTurnModels.h"
 
+using namespace AccelByte::NetworkUtilities;
+
 /*
  * Currently max char host name, username, and password is 64.
  * The example host will be: us-turn1.accelbyte.net, eu-turn2.accelbyte.net.
@@ -97,7 +99,7 @@ private:
 
 	FAccelByteModelsTurnServerCredential SelectedTurnServerCred;
 
-	EAccelBytePeerStatus PeerStatus = NotHosting;
+	EAccelBytePeerStatus PeerStatus = EAccelBytePeerStatus::NotHosting;
 
 	FDateTime InitiateConnectionTime;
 

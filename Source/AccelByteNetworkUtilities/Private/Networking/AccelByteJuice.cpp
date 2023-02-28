@@ -72,7 +72,7 @@ bool AccelByteJuice::RequestConnect(const FString &ServerUrl, int ServerPort, co
 	if (!Signaling->IsConnected())
 	{
 		UE_LOG_ABNET(Error, TEXT("Signaling server is disconnected"));
-		OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerId, SignalingServerDisconnected);
+		OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerId, EAccelByteP2PConnectionStatus::SignalingServerDisconnected);
 		return false;
 	}
 
@@ -83,7 +83,7 @@ bool AccelByteJuice::RequestConnect(const FString &ServerUrl, int ServerPort, co
 		ServerUrl, ServerPort, FString(), Username, Password};
 
 	Signaling->SendMessage(PeerId, HOST_CHECK_MESSAGE);
-	PeerStatus = WaitingReply;
+	PeerStatus = EAccelBytePeerStatus::WaitingReply;
 
 	const FTickerDelegate TickerDelegate = FTickerDelegate::CreateRaw(this, &AccelByteJuice::Tick);
 	FTickerAlias::GetCoreTicker().AddTicker(TickerDelegate, 0.5);
@@ -272,7 +272,7 @@ void AccelByteJuice::HandleMessage(TSharedPtr<FJsonObject> Json)
 				else
 				{
 					UE_LOG_ABNET(Error, TEXT("Failed gathering juice candidate"));
-					OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerId, JuiceGatherFailed);
+					OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerId, EAccelByteP2PConnectionStatus::JuiceGatherFailed);
 				}
 			}));
 		}
@@ -341,7 +341,7 @@ void AccelByteJuice::SetupLocalDescription()
 	else
 	{
 		UE_LOG_ABNET(Error, TEXT("Failed getting juice local description"));
-		OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerId, JuiceGetLocalDescriptionFailed);
+		OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerId, EAccelByteP2PConnectionStatus::JuiceGetLocalDescriptionFailed);
 	}
 }
 
@@ -366,7 +366,7 @@ void AccelByteJuice::JuiceStateChanged(juice_state_t State)
 	else if(State == JUICE_STATE_FAILED)
 	{
 		UE_LOG_ABNET(Error, TEXT("Juice connection failed"));
-		OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerId, JuiceConnectionFailed);
+		OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerId, EAccelByteP2PConnectionStatus::JuiceConnectionFailed);
 	}
 	else if(State == JUICE_STATE_DISCONNECTED)
 	{
@@ -454,16 +454,16 @@ bool AccelByteJuice::Tick(float DeltaTime)
 		{
 			UE_LOG_ABNET(Error, TEXT("Failed initiating connection to peer, timeout after %d seconds"), HostCheckTimeout);
 			bIsCheckingHost = false;
-			OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerId, HostResponseTimeout);
+			OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerId, EAccelByteP2PConnectionStatus::HostResponseTimeout);
 			return false;
 		}
 
 		switch (PeerStatus)
 		{
-			case WaitingReply:
+			case EAccelBytePeerStatus::WaitingReply:
 				return true;
 
-			case Hosting:
+			case EAccelBytePeerStatus::Hosting:
 				{
 					const TSharedRef<FJsonObject> Json = MakeShared<FJsonObject>();
 					Json->SetStringField(TEXT("type"), TEXT("ice"));
@@ -483,10 +483,10 @@ bool AccelByteJuice::Tick(float DeltaTime)
 					break;
 				}
 
-			case NotHosting:
+			case EAccelBytePeerStatus::NotHosting:
 				{
 					UE_LOG_ABNET(Error, TEXT("Peer is not hosting"));
-					OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerId, PeerIsNotHosting);
+					OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerId, EAccelByteP2PConnectionStatus::PeerIsNotHosting);
 					break;
 				}
 		}
@@ -506,11 +506,11 @@ void AccelByteJuice::UpdatePeerStatus(const FString& Message)
 
 	if (bIsPeerHosting)
 	{
-		PeerStatus = Hosting;
+		PeerStatus = EAccelBytePeerStatus::Hosting;
 	}
 	else
 	{
-		PeerStatus = NotHosting;
+		PeerStatus = EAccelBytePeerStatus::NotHosting;
 	}
 }
 

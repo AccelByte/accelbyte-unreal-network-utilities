@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/3.0.0%0D2.10.0) (2023-02-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* EAccelByteP2PConnectionStatus and EAccelBytePeerStatus changed from raw enum tu UENUM() enum class
+
+### Bug Fixes
+
+* enclose EAccelByteP2PConnectionStatus and EAccelBytePeerStatus in namespace and change to enum class ([31fb84f](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/31fb84fa54a84dc87f06779545600524d74ac54c))
+
 ## [2.10.0](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/2.10.0%0D2.9.0) (2023-02-13)
 
 

@@ -4,7 +4,12 @@
 
 #pragma once
 
-enum EAccelByteP2PConnectionStatus
+namespace AccelByte
+{
+namespace NetworkUtilities
+{
+UENUM()
+enum class EAccelByteP2PConnectionStatus
 {
 	Success,
 	SignalingServerDisconnected,
@@ -17,9 +22,12 @@ enum EAccelByteP2PConnectionStatus
 	FailedGettingTurnServerCredential
 };
 
-enum EAccelBytePeerStatus
+UENUM()
+enum class EAccelBytePeerStatus : uint8
 {
 	NotHosting,
 	WaitingReply,
 	Hosting
 };
+}
+}

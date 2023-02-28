@@ -7,6 +7,8 @@
 #include "Core/AccelByteMultiRegistry.h"
 #include "AccelByteNetworkingStatus.h"
 
+using namespace NetworkUtilities;
+
 class ACCELBYTENETWORKUTILITIES_API FAccelByteNetworkUtilitiesModule : public IModuleInterface
 {
 public:

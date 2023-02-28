@@ -86,7 +86,7 @@ bool AccelByteNetworkManager::RequestConnect(const FString& PeerId)
 				{
 					UE_LOG_ABNET(Error, TEXT("Error getting turn server from turn manager: %s"), *ErrorMessage);
 					OnWebRTCDataChannelConnectedDelegate.ExecuteIfBound(PeerId, false);
-					OnWebRTCRequestConnectFinishedDelegate.ExecuteIfBound(PeerId, FailedGettingTurnServer);
+					OnWebRTCRequestConnectFinishedDelegate.ExecuteIfBound(PeerId, EAccelByteP2PConnectionStatus::FailedGettingTurnServer);
 				}));
 	}
 	else
@@ -289,7 +289,7 @@ void AccelByteNetworkManager::RTCConnected(const FString& PeerId, const EP2PConn
 	FScopeLock ScopeLock(&LockObject);
 	PeerRequestConnectTime.Remove(PeerId);
 	OnWebRTCDataChannelConnectedDelegate.ExecuteIfBound(PeerId, true);
-	OnWebRTCRequestConnectFinishedDelegate.ExecuteIfBound(PeerId, Success);
+	OnWebRTCRequestConnectFinishedDelegate.ExecuteIfBound(PeerId, EAccelByteP2PConnectionStatus::Success);
 
 	SendMetricData(P2PConnectionType);
 }
@@ -381,11 +381,11 @@ void AccelByteNetworkManager::RequestCredentialAndConnect(const FString& PeerId,
 		{
 			UE_LOG_ABNET(Error, TEXT("Error getting turn server credential: %s"), *ErrorMessage);
 			OnWebRTCDataChannelConnectedDelegate.ExecuteIfBound(PeerId, false);
-			OnWebRTCRequestConnectFinishedDelegate.ExecuteIfBound(PeerId, FailedGettingTurnServerCredential);
+			OnWebRTCRequestConnectFinishedDelegate.ExecuteIfBound(PeerId, EAccelByteP2PConnectionStatus::FailedGettingTurnServerCredential);
 		}));
 }
 
-void AccelByteNetworkManager::OnICEConnectionErrorCallback(const FString& PeerId, const EAccelByteP2PConnectionStatus& Status)
+void AccelByteNetworkManager::OnICEConnectionErrorCallback(const FString& PeerId, const NetworkUtilities::EAccelByteP2PConnectionStatus& Status)
 {
 	FScopeLock ScopeLock(&LockObject);
 	OnWebRTCDataChannelConnectedDelegate.ExecuteIfBound(PeerId, false);

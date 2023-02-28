@@ -9,6 +9,8 @@
 #include "Dom/JsonObject.h"
 #include "Models/AccelByteTurnModels.h"
 
+using namespace AccelByte::NetworkUtilities;
+
 class AccelByteSignalingBase;
 
 /**
