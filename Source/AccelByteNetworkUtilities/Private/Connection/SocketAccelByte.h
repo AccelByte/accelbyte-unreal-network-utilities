@@ -23,6 +23,8 @@ private:
 	 */
 	FString NetId;
 
+	int32 Channel;
+
 public:
 	FSocketAccelByte();
 	virtual ~FSocketAccelByte() {};

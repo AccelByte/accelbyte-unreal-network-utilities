@@ -14,7 +14,7 @@ void UIpConnectionAccelByte::InitRemoteConnection(class UNetDriver* InDriver, cl
 	bIsICEConnection = static_cast<UIpNetDriverAccelByte*>(InDriver)->bICEConnectionsEnabled;
 	if (bIsICEConnection)
 	{
-		PeerId = InRemoteAddr.ToString(false);
+		PeerId = InRemoteAddr.ToString(true);
 		/*
 		 * Disabled because the IP address passed here is not real IP Address, but AccelByteIpAddress
 		 * it has its own format of IP, please check IPAddressAccelByte
@@ -30,7 +30,7 @@ void UIpConnectionAccelByte::InitLocalConnection(class UNetDriver* InDriver, cla
 	bIsICEConnection = InURL.Host.StartsWith(ACCELBYTE_URL_PREFIX);
 	if (bIsICEConnection)
 	{
-		PeerId = InURL.Host;
+		PeerId = FString::Printf(TEXT("%s:%d"), *InURL.Host, InURL.Port);
 		PeerId.RemoveFromStart(ACCELBYTE_URL_PREFIX);
 		/*
 		* Disabled because the IP address passed here is not real IP Address, but AccelByteIpAddress

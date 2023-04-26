@@ -7,5 +7,16 @@
 /*
  * define constant for check signaling prior to initiate connection
  */
-#define HOST_CHECK_MESSAGE TEXT("is-hosting")
-#define HOST_CHECK_REPLY_DELIMITER TEXT(":")
+
+#define SIGNALING_TYPE_ICE TEXT("ice")
+#define SIGNALING_TYPE_SDP TEXT("sdp")
+#define SIGNALING_TYPE_CANDIDATE TEXT("candidate")
+#define SIGNALING_TYPE_DONE TEXT("done")
+#define SIGNALING_TYPE_CHECK_HOST TEXT("hosting")
+#define SIGNALING_TYPE_CHECK_HOST_REPLY TEXT("hostingreply")
+
+#define HOST_CHECK_MESSAGE_HOSTING TEXT("hosting")
+#define HOST_CHECK_MESSAGE_NOT_HOSTING TEXT("not_hosting")
+
+#define SIGNALING_OFFER TEXT("offer")
+

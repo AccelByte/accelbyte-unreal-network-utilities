@@ -75,6 +75,10 @@ FAddressInfoResult FSocketSubsystemAccelByte::GetAddressInfo(const TCHAR* HostNa
 		Result.ReturnCode = SE_NO_ERROR;
 		TSharedRef<FInternetAddrAccelByte> IpAddr = StaticCastSharedRef<FInternetAddrAccelByte>(CreateInternetAddr());
 		IpAddr->NetId = RawAddress;
+		if(PortString.IsNumeric())
+		{
+			IpAddr->Channel = FCString::Atoi(*PortString);
+		}
 		Result.Results.Add(FAddressInfoResultData(IpAddr, 0, ACCELBYTE_SUBSYSTEM, SOCKTYPE_Unknown));
 		return Result;
 	}

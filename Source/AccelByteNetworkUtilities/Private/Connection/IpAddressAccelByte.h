@@ -27,6 +27,11 @@ PACKAGE_SCOPE:
 	 */
 	FString NetId;
 
+	/*
+	 * Channel that hold multi connection per user
+	 */
+	int32 Channel = 0;
+
 	FInternetAddrAccelByte(const FInternetAddrAccelByte& Src);
 
 public:
@@ -39,7 +44,10 @@ public:
 	void SetIp(uint32 InAddr) override;
 	void SetIp(const TCHAR* InAddr, bool& bIsValid) override;
 	void GetIp(uint32& OutAddr) const override;
-	void SetPort(int32 InPort) override {};
+	void SetPort(int32 InPort) override
+	{
+		Channel = InPort;
+	};
 	void GetPort(int32& OutPort) const override;
 	int32 GetPort() const override;
 	void SetAnyAddress() override {};
@@ -53,4 +61,6 @@ public:
 	virtual FName GetProtocolType() const override;
 	virtual TSharedRef<FInternetAddr> Clone() const override;
 	//~ End FInternetAddr Interface
+
+	void SetPeerChannel(const FString &InPeerId, int32 InChannel);
 };

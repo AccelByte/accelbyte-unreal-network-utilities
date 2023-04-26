@@ -50,19 +50,9 @@ AccelByteJuice::AccelByteJuice(const FString& PeerId): AccelByteICEBase(PeerId)
 	}
 }
 
-void AccelByteJuice::OnSignalingMessage(const FString& Message)
+void AccelByteJuice::OnSignalingMessage(const FAccelByteSignalingMessage &Message)
 {
-	if (Message.Contains(FString::Printf(TEXT("%s%s"), HOST_CHECK_MESSAGE, HOST_CHECK_REPLY_DELIMITER)))
-	{
-		UpdatePeerStatus(Message);
-		return;
-	}
-	
-	//Signaling message encoded to base64 string because sometimes it having special character that I am not sure if it supported by normal json string
-	FString Base64Decoded;
-	FBase64::Decode(Message, Base64Decoded);
-	const TSharedPtr<FJsonObject> Json = StringToJson(Base64Decoded);
-	HandleMessage(Json);
+	HandleMessage(Message);
 }
 
 bool AccelByteJuice::RequestConnect(const FString &ServerUrl, int ServerPort, const FString &Username, const FString &Password)
@@ -72,7 +62,7 @@ bool AccelByteJuice::RequestConnect(const FString &ServerUrl, int ServerPort, co
 	if (!Signaling->IsConnected())
 	{
 		UE_LOG_ABNET(Error, TEXT("Signaling server is disconnected"));
-		OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerId, EAccelByteP2PConnectionStatus::SignalingServerDisconnected);
+		OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerChannel, EAccelByteP2PConnectionStatus::SignalingServerDisconnected);
 		return false;
 	}
 
@@ -82,7 +72,11 @@ bool AccelByteJuice::RequestConnect(const FString &ServerUrl, int ServerPort, co
 	SelectedTurnServerCred = FAccelByteModelsTurnServerCredential{
 		ServerUrl, ServerPort, FString(), Username, Password};
 
-	Signaling->SendMessage(PeerId, HOST_CHECK_MESSAGE);
+	FAccelByteSignalingMessage SignalingMessage;
+	SignalingMessage.Type = SIGNALING_TYPE_CHECK_HOST;
+	SignalingMessage.Channel = Channel;
+	
+	Signaling->SendMessage(PeerId, SignalingMessage);
 	PeerStatus = EAccelBytePeerStatus::WaitingReply;
 
 	const FTickerDelegate TickerDelegate = FTickerDelegate::CreateRaw(this, &AccelByteJuice::Tick);
@@ -168,10 +162,10 @@ void AccelByteJuice::CreatePeerConnection(const FString& Host, const FString &Us
 
 	SetupLocalDescription();
 	// Apply Session Description Protocol (SDP) from remote that is in queue
-	TSharedPtr<FJsonObject> Json;
-	if (SdpQueue.Dequeue(Json))
+	FAccelByteSignalingMessage Message;
+	if (SdpQueue.Dequeue(Message))
 	{
-		HandleMessage(Json);
+		HandleMessage(Message);
 	}
 }
 
@@ -211,41 +205,36 @@ void AccelByteJuice::SetupCallback()
 	};
 }
 
-void AccelByteJuice::HandleMessage(TSharedPtr<FJsonObject> Json)
+void AccelByteJuice::HandleMessage(const FAccelByteSignalingMessage &Message)
 {
 	/*
 	 * Message coming from signaling message, the message is actually from remote peer that want to connect
 	 * Peers need to exchange data of turn server, candidate and sdp
 	 */
-	const FString Type = Json->GetStringField(TEXT("type"));
-	FString JsonString;
-	JsonToString(JsonString, Json.ToSharedRef());
-	UE_LOG_ABSIGNALING(Verbose, TEXT("Signaling Message : %s"), *JsonString);
-	if (Type.Equals(TEXT("ice")))
+	if (Message.Type.Equals(SIGNALING_TYPE_CHECK_HOST_REPLY))
+	{
+		UpdatePeerStatus(Message.Data.Equals(HOST_CHECK_MESSAGE_HOSTING));
+	}
+	else if (Message.Type.Equals(SIGNALING_TYPE_ICE))
 	{
 		/*
 		 * Message type of "ice" means that the remote peer wants to connect with a specific TURN server
 		 * so the peer and host connected to the same turn server to make the nat relay happen correctly
 		 */
-		const FString ServerType = Json->GetStringField(TEXT("server_type"));
-		if (ServerType.Equals(TEXT("offer")))
+		if (Message.Data.Equals(SIGNALING_OFFER))
 		{
-			const FString Host = Json->GetStringField(TEXT("host"));
-			const FString Username = Json->GetStringField(TEXT("username"));
-			const FString Password = Json->GetStringField(TEXT("password"));
-			const int32 Port = Json->GetIntegerField(TEXT("port"));
-			DO_TASK(([this, Host, Username, Password, Port]() {
-				CreatePeerConnection(Host, Username, Password, Port);
+			DO_TASK(([this, Message]() {
+				CreatePeerConnection(Message.TurnServer.Host, Message.TurnServer.Username, Message.TurnServer.Password, Message.TurnServer.Port);
 			}));
 		}
 	}
-	else if (Type.Equals(TEXT("sdp")))
+	else if (Message.Type.Equals(SIGNALING_TYPE_SDP))
 	{
 		/*
 		* There is SDP info from remote peer that will be apply to juice instance
 		* https://tools.ietf.org/id/draft-nandakumar-rtcweb-sdp-01.html
 		*/
-		const FString Sdp = Json->GetStringField(TEXT("sdp"));		
+		const FString Sdp = Message.Data;		
 		if(IsPeerReady())
 		{
 			DO_TASK(([this, Sdp]()
@@ -263,7 +252,7 @@ void AccelByteJuice::HandleMessage(TSharedPtr<FJsonObject> Json)
 					/*
 					* The local description is ready and all peer candidate can be applied to juice instance
 					*/
-					TSharedPtr<FJsonObject> JsonCandidate;
+					FAccelByteSignalingMessage JsonCandidate;
 					while (CandidateQueue.Dequeue(JsonCandidate))
 					{
 						HandleMessage(JsonCandidate);
@@ -272,17 +261,17 @@ void AccelByteJuice::HandleMessage(TSharedPtr<FJsonObject> Json)
 				else
 				{
 					UE_LOG_ABNET(Error, TEXT("Failed gathering juice candidate"));
-					OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerId, EAccelByteP2PConnectionStatus::JuiceGatherFailed);
+					OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerChannel, EAccelByteP2PConnectionStatus::JuiceGatherFailed);
 				}
 			}));
 		}
 		else
 		{
 			// Queue it and apply when local description ready
-			SdpQueue.Enqueue(Json);
+			SdpQueue.Enqueue(Message);
 		}		
 	}
-	else if (Type.Equals(TEXT("candidate")))
+	else if (Message.Type.Equals(SIGNALING_TYPE_CANDIDATE))
 	{
 		/*
 		 * Candidate of IP address that can be connected to from peer
@@ -293,7 +282,7 @@ void AccelByteJuice::HandleMessage(TSharedPtr<FJsonObject> Json)
 		DescriptionReadyMutex.Unlock();
 		if(bIsDescriptionReadyCopy)
 		{
-			const FString Candidate = Json->GetStringField(TEXT("candidate"));
+			const FString Candidate = Message.Data;
 			if(bIsForceIceUsingRelay && !Candidate.Contains(TEXT("typ relay")))
 			{
 				return;
@@ -309,10 +298,10 @@ void AccelByteJuice::HandleMessage(TSharedPtr<FJsonObject> Json)
 			/*
 			 * Undefined behaviour when candidate applied but the local description is not ready yet
 			 */
-			CandidateQueue.Enqueue(Json);
+			CandidateQueue.Enqueue(Message);
 		}
 	}
-	else if (Type.Equals(TEXT("done")))
+	else if (Message.Type.Equals(TEXT("done")))
 	{
 		DO_TASK(([JuiceAgent = this->JuiceAgent]()
 		{
@@ -329,19 +318,17 @@ void AccelByteJuice::SetupLocalDescription()
 	if(Result == JUICE_ERR_SUCCESS)
 	{
 		UE_LOG_ABNET(Log, TEXT("Juice Local Description : %hs"), Buffer);
-		TSharedRef<FJsonObject> Json = MakeShared<FJsonObject>();
-		Json->SetStringField(TEXT("type"), TEXT("sdp"));
-		Json->SetStringField(TEXT("sdp"), FString(Buffer));
-		FString JsonString;
-		JsonToString(JsonString, Json);
-		const FString Base64String = FBase64::Encode(JsonString);
+		FAccelByteSignalingMessage Message;
+		Message.Type = SIGNALING_TYPE_SDP;
+		Message.Channel = Channel;
+		Message.Data = FString(Buffer);
 		check(Signaling != nullptr);
-		Signaling->SendMessage(PeerId, Base64String);
+		Signaling->SendMessage(PeerId, Message);
 	}
 	else
 	{
 		UE_LOG_ABNET(Error, TEXT("Failed getting juice local description"));
-		OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerId, EAccelByteP2PConnectionStatus::JuiceGetLocalDescriptionFailed);
+		OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerChannel, EAccelByteP2PConnectionStatus::JuiceGetLocalDescriptionFailed);
 	}
 }
 
@@ -361,16 +348,16 @@ void AccelByteJuice::JuiceStateChanged(juice_state_t State)
 		result = juice_get_selected_candidates(JuiceAgent, localCandidate, MAX_ADDRESS_LENGTH, remoteCandidate, MAX_ADDRESS_LENGTH);
 		UE_LOG_ABNET(Log, TEXT("selected candidate: %d; local : %hs; remote: %hs"), result, localCandidate, remoteCandidate);
 #endif
-		OnICEDataChannelConnectedDelegate.ExecuteIfBound(PeerId, GetP2PConnectionType());
+		OnICEDataChannelConnectedDelegate.ExecuteIfBound(PeerChannel, GetP2PConnectionType());
 	}
 	else if(State == JUICE_STATE_FAILED)
 	{
 		UE_LOG_ABNET(Error, TEXT("Juice connection failed"));
-		OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerId, EAccelByteP2PConnectionStatus::JuiceConnectionFailed);
+		OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerChannel, EAccelByteP2PConnectionStatus::JuiceConnectionFailed);
 	}
 	else if(State == JUICE_STATE_DISCONNECTED)
 	{
-		OnICEDataChannelClosedDelegate.ExecuteIfBound(PeerId);
+		OnICEDataChannelClosedDelegate.ExecuteIfBound(PeerChannel);
 	}
 	if(LastJuiceState == JUICE_STATE_CONNECTING && (State == JUICE_STATE_FAILED || State == JUICE_STATE_COMPLETED || State == JUICE_STATE_DISCONNECTED))
 	{
@@ -387,30 +374,26 @@ void AccelByteJuice::JuiceCandidate(const char* Candidate)
 	{
 	    return;
 	}
-	TSharedRef<FJsonObject> Json = MakeShared<FJsonObject>();
-	Json->SetStringField(TEXT("type"), TEXT("candidate"));
-	Json->SetStringField(TEXT("candidate"), InCandidate);
-	FString JsonString;
-	JsonToString(JsonString, Json);
-	const FString Base64String = FBase64::Encode(JsonString);
-	Signaling->SendMessage(PeerId, Base64String);
+	FAccelByteSignalingMessage Message;
+	Message.Type = SIGNALING_TYPE_CANDIDATE;
+	Message.Channel = Channel;
+	Message.Data = Candidate;
+	Signaling->SendMessage(PeerId, Message);
 }
 
 void AccelByteJuice::JuiceGatheringDone()
 {
 	UE_LOG_ABNET(Log, TEXT("Juice Gathering Done"));
-	TSharedRef<FJsonObject> Json = MakeShared<FJsonObject>();
-	Json->SetStringField(TEXT("type"), TEXT("done"));
-	FString JsonString;
-	JsonToString(JsonString, Json);
-	const FString Base64String = FBase64::Encode(JsonString);
-	Signaling->SendMessage(PeerId, Base64String);
+	FAccelByteSignalingMessage Message;
+	Message.Type = SIGNALING_TYPE_DONE;
+	Message.Channel = Channel;
+	Signaling->SendMessage(PeerId, Message);
 }
 
 void AccelByteJuice::JuiceDataRecv(const char* data, size_t size)
 {
 	check(!PeerId.IsEmpty());
-	OnICEDataReadyDelegate.ExecuteIfBound(PeerId, (uint8*)data, size);
+	OnICEDataReadyDelegate.ExecuteIfBound(PeerId, Channel, (uint8*)data, size);
 }
 
 EP2PConnectionType AccelByteJuice::GetP2PConnectionType() const
@@ -454,7 +437,7 @@ bool AccelByteJuice::Tick(float DeltaTime)
 		{
 			UE_LOG_ABNET(Error, TEXT("Failed initiating connection to peer, timeout after %d seconds"), HostCheckTimeout);
 			bIsCheckingHost = false;
-			OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerId, EAccelByteP2PConnectionStatus::HostResponseTimeout);
+			OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerChannel, EAccelByteP2PConnectionStatus::HostResponseTimeout);
 			return false;
 		}
 
@@ -465,18 +448,15 @@ bool AccelByteJuice::Tick(float DeltaTime)
 
 			case EAccelBytePeerStatus::Hosting:
 				{
-					const TSharedRef<FJsonObject> Json = MakeShared<FJsonObject>();
-					Json->SetStringField(TEXT("type"), TEXT("ice"));
-					Json->SetStringField(TEXT("host"), SelectedTurnServerCred.Ip);
-					Json->SetStringField(TEXT("username"), SelectedTurnServerCred.Username);
-					Json->SetStringField(TEXT("password"), SelectedTurnServerCred.Password);
-					Json->SetNumberField(TEXT("port"), SelectedTurnServerCred.Port);	
-					Json->SetStringField(TEXT("server_type"), TEXT("offer"));
-
-					FString JsonString;
-					JsonToString(JsonString, Json);
-					const FString Base64String = FBase64::Encode(JsonString);
-					Signaling->SendMessage(PeerId, Base64String);
+					FAccelByteSignalingMessage Message;
+					Message.Type = SIGNALING_TYPE_ICE;
+					Message.Channel = Channel;
+					Message.TurnServer.Host = SelectedTurnServerCred.Ip;
+					Message.TurnServer.Port = SelectedTurnServerCred.Port;
+					Message.TurnServer.Username = SelectedTurnServerCred.Username;
+					Message.TurnServer.Password = SelectedTurnServerCred.Password;
+					Message.Data = SIGNALING_OFFER;
+					Signaling->SendMessage(PeerId, Message);
 					CreatePeerConnection(SelectedTurnServerCred.Ip, SelectedTurnServerCred.Username,
 						SelectedTurnServerCred.Password, SelectedTurnServerCred.Port);
 
@@ -486,7 +466,7 @@ bool AccelByteJuice::Tick(float DeltaTime)
 			case EAccelBytePeerStatus::NotHosting:
 				{
 					UE_LOG_ABNET(Error, TEXT("Peer is not hosting"));
-					OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerId, EAccelByteP2PConnectionStatus::PeerIsNotHosting);
+					OnICEDataChannelConnectionErrorDelegate.ExecuteIfBound(PeerChannel, EAccelByteP2PConnectionStatus::PeerIsNotHosting);
 					break;
 				}
 		}
@@ -497,21 +477,9 @@ bool AccelByteJuice::Tick(float DeltaTime)
 	return false;
 }
 
-void AccelByteJuice::UpdatePeerStatus(const FString& Message)
+void AccelByteJuice::UpdatePeerStatus(bool InStatus)
 {
-	TArray<FString> ParsedStrings;
-	Message.ParseIntoArray(ParsedStrings, HOST_CHECK_REPLY_DELIMITER);
-
-	const bool bIsPeerHosting = ParsedStrings.Last().ToBool();
-
-	if (bIsPeerHosting)
-	{
-		PeerStatus = EAccelBytePeerStatus::Hosting;
-	}
-	else
-	{
-		PeerStatus = EAccelBytePeerStatus::NotHosting;
-	}
+	PeerStatus = InStatus ? EAccelBytePeerStatus::Hosting : EAccelBytePeerStatus::NotHosting;
 }
 
 #endif

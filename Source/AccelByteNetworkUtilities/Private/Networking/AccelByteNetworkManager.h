@@ -53,9 +53,9 @@ public:
 	/**
 	 * @brief Request connect to peer connection id
 	 *
-	 * @param PeerId id of the remote connection
+	 * @param PeerChannel id of the remote connection. PeerId will have format userID:channel, ex: abc:123
 	*/
-	bool RequestConnect(const FString& PeerId);
+	bool RequestConnect(const FString& PeerChannel);
 
 	/**
 	 * @brief Setup the network manager before use
@@ -70,9 +70,20 @@ public:
 	 * @param Data to send
 	 * @param Count data length to send
 	 * @param BytesSent actual data sent
-	 * @param PeerId peer id of the remote
+	 * @param PeerChannel peer channel of the remote, with format userid:channel
 	*/
-	bool SendTo(const uint8* Data, int32 Count, int32& BytesSent, const FString &PeerId);
+	bool SendTo(const uint8* Data, int32 Count, int32& BytesSent, const FString &PeerChannel);
+
+	/**
+	 * @brief Send data to peer id connection
+	 *
+	 * @param Data to send
+	 * @param Count data length to send
+	 * @param BytesSent actual data sent
+	 * @param PeerId peer id of the target
+	 * @param Channel of the connection
+	*/
+	bool SendTo(const uint8* Data, int32 Count, int32& BytesSent, const FString &PeerId, int32 Channel);
 
 	/**
 	 * @brief Receive data from any peer when any data available
@@ -82,7 +93,7 @@ public:
 	 * @param BytesRead actual data length read
 	 * @param PeerId peer id where the data come from
 	*/
-	bool RecvFrom(uint8* Data, int32 BufferSize, int32& BytesRead, FString &PeerId);
+	bool RecvFrom(uint8* Data, int32 BufferSize, int32& BytesRead, FString &PeerId, int32 &Channel);
 
 	/**
 	 * @brief Check if any data available to read
@@ -96,9 +107,9 @@ public:
 	/**
 	 * @brief Close the peer connection of specific peer id
 	 *
-	 * @param PeerId peer id to close the connection
+	 * @param PeerChannel peer id to close the connection
 	*/
-	void ClosePeerConnection(const FString& PeerId);
+	void ClosePeerConnection(const FString& PeerChannel);
 
 	/**
 	 * @brief Close all peer connection
@@ -159,6 +170,9 @@ private:
 	// Store current hosting state of network manager
 	bool bIsHosting = false;
 
+	// Connect timeout in seconds
+	int32 RequestConnectTimeout = 30;
+
 	/**
 	 * @brief Check whatever there is data ready to read from cached data (LastReadData)
 	 *
@@ -169,10 +183,10 @@ private:
 	/**
 	 * @brief Handle message when any signaling message from AccelByte lobby service
 	 *
-	 * @param PeerId Peer id where is this message coming from
+	 * @param PeerChannel Peer channel where is this message coming from
 	 * @param Message Signaling message in Json
 	 */
-	void OnSignalingMessage(const FString& PeerId, const FString& Message);
+	void OnSignalingMessage(const FString& PeerChannel, const FString& Message);
 
 	/**
 	 * @brief Incoming data from peer-to-peer remote connection
@@ -181,29 +195,29 @@ private:
 	 * @param Data date received
 	 * @param Count length of the data
 	 */
-	void IncomingData(const FString &FromPeerId, const uint8* Data, int32 Count);
+	void IncomingData(const FString &FromPeerId, int32 Channel, const uint8* Data, int32 Count);
 
 	/**
 	* @brief RTCConnected called when any peer-to-peer connection connected
 	*
-	* @param PeerId of the remote connection
+	* @param PeerChannel of the remote connection
 	* @param P2PConnectionType of the connection (host, srflx, prflx, or host)
 	*/
-	void RTCConnected(const FString& PeerId, const EP2PConnectionType& P2PConnectionType = EP2PConnectionType::None);
+	void RTCConnected(const FString& PeerChannel, const EP2PConnectionType& P2PConnectionType = EP2PConnectionType::None);
 
 	/**
 	* @brief RTCClosed called when any peer-to-peer connection closed
 	*
-	* @param PeerId of the remote connection
+	* @param PeerChannel of the remote connection
 	*/
-	void RTCClosed(const FString& PeerId);
+	void RTCClosed(const FString& PeerChannel);
 
 	/**
 	* @brief CreateNewConnection create a AccelByteICEBase connection instance to the destination
 	*
 	* @param PeerId of the remote connection
 	*/
-	TSharedPtr<AccelByteICEBase> CreateNewConnection(const FString& PeerId);
+	TSharedPtr<AccelByteICEBase> CreateNewConnection(const FString& PeerChannel);
 
 	/**
 	 * @brief Ticker for check if connection failed within some seconds

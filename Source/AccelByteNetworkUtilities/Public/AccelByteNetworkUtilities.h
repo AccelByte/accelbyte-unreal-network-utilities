@@ -98,4 +98,11 @@ public:
 	 * @brief set to indicate the player is no longer hosting the game
 	 */
 	void DisableHosting();
+
+	/*
+	 * @brief Extract the peer id and the channel
+	 *
+	 * @param PeerId input of the userId:channel in string
+	 */
+	static TTuple<FString, int32> ExtractPeerAndChannel(const FString &PeerId);
 };

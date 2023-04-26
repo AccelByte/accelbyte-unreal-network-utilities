@@ -11,8 +11,8 @@
 
 /*
  * Prefix of the custom AccelByte IP Address
- * The format of IP : ACCELBYTE_URL_PREFIX[user_id]
- * Example value: accelbyte.12345678abcd
+ * The format of IP : ACCELBYTE_URL_PREFIX.[user_id]:[channel]
+ * Example value: accelbyte.12345678abcd:3314
  */
 #define ACCELBYTE_URL_PREFIX TEXT("accelbyte.")
 
@@ -25,8 +25,3 @@
  * The socket accelbyte fname as the identifier of the accelbyte socket instance
  */
 #define SOCKET_ACCELBYTE_FNAME FName(TEXT("SocketAccelByte"))
-
-/*
- * Dummy port that used as listening port of the listen server
- */
-#define ACCELBYTE_SOCKET_PORT 11223;

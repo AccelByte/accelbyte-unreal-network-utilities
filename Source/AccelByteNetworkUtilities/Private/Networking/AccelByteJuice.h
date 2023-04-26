@@ -44,7 +44,7 @@ public:
 	*
 	* @param Message from signaling service (AccelByte Lobby)
 	*/
-	virtual void OnSignalingMessage(const FString& Message) override;
+	virtual void OnSignalingMessage(const FAccelByteSignalingMessage &Message) override;
 
 	/**
 	* @brief Request connect to PeerId
@@ -111,12 +111,12 @@ private:
 	/*
 	 * Will save the remote Juice SDP when bIsDescriptionReady still false. And apply it when bIsDescriptionReady is true
 	 */
-	TQueue<TSharedPtr<FJsonObject>> SdpQueue;
+	TQueue<FAccelByteSignalingMessage> SdpQueue;
 
 	/*
 	* Will save the remote Juice Candidate when bIsDescriptionReady still false. And apply it when bIsDescriptionReady is true
 	*/
-	TQueue<TSharedPtr<FJsonObject>> CandidateQueue;
+	TQueue<FAccelByteSignalingMessage> CandidateQueue;
 
 	/*
 	 * This variable is to save the temporary value from FString
@@ -142,7 +142,7 @@ private:
 	void SetupCallback();
 
 	// Handle signaling message
-	void HandleMessage(TSharedPtr<FJsonObject> Json);
+	void HandleMessage(const FAccelByteSignalingMessage &Message);
 
 	//Setup local description
 	void SetupLocalDescription();
@@ -172,7 +172,7 @@ private:
 	 *
 	 * @param Message message string from signaling
 	 */
-	void UpdatePeerStatus(const FString &Message);
+	void UpdatePeerStatus(bool InStatus);
 };
 
 #endif

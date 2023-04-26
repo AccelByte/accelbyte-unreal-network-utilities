@@ -3,6 +3,8 @@
 // and restrictions contact your company contract manager.
 
 #include "AccelByteSignaling.h"
+
+#include "AccelByteNetworkUtilitiesLog.h"
 #include "Core/AccelByteRegistry.h"
 #include "Api/AccelByteLobbyApi.h"
 
@@ -26,9 +28,17 @@ void AccelByteSignaling::Connect()
 	ApiClientPtr->Lobby.Connect();
 }
 
-void AccelByteSignaling::SendMessage(const FString& PeerId, const FString& Message)
+void AccelByteSignaling::SendMessage(const FString& PeerId, const FAccelByteSignalingMessage& Message)
 {
-	ApiClientPtr->Lobby.SendSignalingMessage(PeerId, Message);
+	FString StringMessage;
+	if(FJsonObjectConverter::UStructToJsonObjectString(Message, StringMessage))
+	{
+		ApiClientPtr->Lobby.SendSignalingMessage(PeerId, FBase64::Encode(StringMessage));
+	}
+	else
+	{
+		UE_LOG_ABSIGNALING(Error, TEXT("unable to convert signaling message to json string"))
+	}
 }
 
 void AccelByteSignaling::OnSignalingMessage(const FString& PeerId, const FString& Message)

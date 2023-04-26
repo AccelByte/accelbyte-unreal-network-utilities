@@ -6,6 +6,7 @@
 
 #include "CoreMinimal.h"
 #include "AccelByteNetworkingStatus.h"
+#include "AccelByteSignalingModels.h"
 #include "Dom/JsonObject.h"
 #include "Models/AccelByteTurnModels.h"
 
@@ -47,18 +48,17 @@ public:
 	* @brief Delegate when any ICE data available
 	*
 	* @param The remote peer id
+	* @param Channel id
 	* @param Data array
 	* @param Length of the data array
 	*/
-	DECLARE_DELEGATE_ThreeParams(OnICEDataReady, const FString&, const uint8*, int32);
+	DECLARE_DELEGATE_FourParams(OnICEDataReady, const FString&, int32, const uint8*, int32);
 
 	AccelByteICEBase()
 	{
 	}
 
-	AccelByteICEBase(const FString &PeerId): PeerId(PeerId)
-	{
-	}
+	AccelByteICEBase(const FString &PeerId);
 
 	virtual ~AccelByteICEBase()
 	{
@@ -69,7 +69,7 @@ public:
 	*
 	* @param Message from signaling service (AccelByte Lobby)
 	*/
-	virtual void OnSignalingMessage(const FString& Message) = 0;
+	virtual void OnSignalingMessage(const FAccelByteSignalingMessage &Message) = 0;
 
 	/**
 	* @brief Request connect to PeerId
@@ -172,16 +172,19 @@ protected:
 
 	bool bIsConnected = false;
 
+	// PeerChannel with format userId:Channel
+	FString PeerChannel;
+
 	// AccelByte user ID of the remote peer
 	FString PeerId;
+
+	// Channel ID
+	int32 Channel;
 
 	OnICEDataChannelConnected OnICEDataChannelConnectedDelegate;
 	OnICEDataChannelConnectionError OnICEDataChannelConnectionErrorDelegate;
 	OnICEDataChannelClosed OnICEDataChannelClosedDelegate;
 	OnICEDataReady OnICEDataReadyDelegate;
-
-	static void JsonToString(FString& Out, TSharedRef<FJsonObject> JsonObject);
-	static TSharedPtr<FJsonObject> StringToJson(const FString& JsonString);
 };
 
 /*
@@ -202,7 +205,7 @@ public:
 	{
 	}
 
-	virtual void OnSignalingMessage(const FString& Message) override
+	virtual void OnSignalingMessage(const FAccelByteSignalingMessage &Message) override
 	{
 	}
 

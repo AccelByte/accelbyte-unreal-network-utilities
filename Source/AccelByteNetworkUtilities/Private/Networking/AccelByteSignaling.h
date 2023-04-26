@@ -18,7 +18,7 @@ public:
 	virtual void Init() override;
 	virtual bool IsConnected() const override;
 	virtual void Connect() override;
-	virtual void SendMessage(const FString &PeerId, const FString &Message) override;
+	virtual void SendMessage(const FString &PeerId, const FAccelByteSignalingMessage &Message) override;
 
 private:
 	AccelByte::FApiClientPtr ApiClientPtr;

@@ -3,19 +3,14 @@
 // and restrictions contact your company contract manager.
 
 #include "AccelByteICEBase.h"
+
+#include "AccelByteNetworkUtilities.h"
 #include "Policies/CondensedJsonPrintPolicy.h"
 #include "Serialization/JsonSerializer.h"
 
-void AccelByteICEBase::JsonToString(FString& Out, TSharedRef<FJsonObject> JsonObject)
+AccelByteICEBase::AccelByteICEBase(const FString& PeerId): PeerChannel(PeerId)
 {
-	auto Writer = TJsonWriterFactory<TCHAR, TCondensedJsonPrintPolicy<TCHAR>>::Create(&Out);
-	FJsonSerializer::Serialize(JsonObject, Writer);
-}
-
-TSharedPtr<FJsonObject> AccelByteICEBase::StringToJson(const FString& JsonString)
-{
-	TSharedPtr<FJsonObject> JsonOut = MakeShared<FJsonObject>();
-    auto Reader = TJsonReaderFactory<TCHAR>::Create(JsonString);
-    FJsonSerializer::Deserialize(Reader, JsonOut);
-    return JsonOut;
+	TTuple<FString, int32> Result = FAccelByteNetworkUtilitiesModule::ExtractPeerAndChannel(PeerId);
+	this->PeerId = Result.Key;
+	this->Channel = Result.Value;
 }

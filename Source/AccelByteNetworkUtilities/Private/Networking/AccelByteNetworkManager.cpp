@@ -11,12 +11,14 @@
 #include "AccelByteNetworkUtilitiesLog.h"
 #include "Api/AccelByteTurnManagerApi.h"
 #include "AccelByteSignalingConstants.h"
+#include "AccelByteSignalingModels.h"
 
 struct ICEData
 {
 	FString PeerId;
+	int32 Channel;
 	TArray<uint8> Data;
-	ICEData(const FString& PeerId, const TArray<uint8>& Data) :PeerId(PeerId), Data(Data)
+	ICEData(const FString& PeerId, int32 Channel, const TArray<uint8>& Data) :PeerId(PeerId), Channel(Channel), Data(Data)
 	{
 	}
 };
@@ -27,13 +29,13 @@ AccelByteNetworkManager& AccelByteNetworkManager::Instance()
 	return AccelByteNetworkManagerInstance;
 }
 
-bool AccelByteNetworkManager::RequestConnect(const FString& PeerId)
+bool AccelByteNetworkManager::RequestConnect(const FString& PeerChannel)
 {
-	if (PeerIdToICEConnectionMap.Contains(PeerId))
+	if (PeerIdToICEConnectionMap.Contains(PeerChannel))
 	{
-		if(PeerIdToICEConnectionMap[PeerId]->IsConnected())
+		if(PeerIdToICEConnectionMap[PeerChannel]->IsConnected())
 		{
-			RTCConnected(PeerId);
+			RTCConnected(PeerChannel);
 			return true;
 		}
 		return false;
@@ -43,7 +45,7 @@ bool AccelByteNetworkManager::RequestConnect(const FString& PeerId)
 	if(bIsUseTurnManager)
 	{
 		ApiClientPtr->TurnManager.GetClosestTurnServer(THandler<FAccelByteModelsTurnServer>::CreateLambda(
-			[this, PeerId](const FAccelByteModelsTurnServer &Result)
+			[this, PeerChannel](const FAccelByteModelsTurnServer &Result)
 				{
 					UE_LOG_ABNET(Log, TEXT("Selected TURN server : %s:%d"), *Result.Ip, Result.Port);
 
@@ -73,20 +75,20 @@ bool AccelByteNetworkManager::RequestConnect(const FString& PeerId)
 						FSHA1::HMACBuffer(TCHAR_TO_ANSI(*TurnSecret), TurnSecret.Len(), TCHAR_TO_ANSI(*Username), Username.Len(), DataOut);
 						FString Password = FBase64::Encode(DataOut, 20);
 
-						TSharedPtr<AccelByteICEBase> Rtc = CreateNewConnection(PeerId);
-						PeerIdToICEConnectionMap.Add(PeerId, Rtc);
+						TSharedPtr<AccelByteICEBase> Rtc = CreateNewConnection(PeerChannel);
+						PeerIdToICEConnectionMap.Add(PeerChannel, Rtc);
 						Rtc->RequestConnect(Result.Ip, Result.Port, Username, Password);
 					} else
 					{
 						UE_LOG_ABNET(Log, TEXT("TURN using dynamic auth secret"));
-						RequestCredentialAndConnect(PeerId, Result);
+						RequestCredentialAndConnect(PeerChannel, Result);
 					}
 				}),
-				FErrorHandler::CreateLambda([this, PeerId](int32, const FString &ErrorMessage)
+				FErrorHandler::CreateLambda([this, PeerChannel](int32, const FString &ErrorMessage)
 				{
 					UE_LOG_ABNET(Error, TEXT("Error getting turn server from turn manager: %s"), *ErrorMessage);
-					OnWebRTCDataChannelConnectedDelegate.ExecuteIfBound(PeerId, false);
-					OnWebRTCRequestConnectFinishedDelegate.ExecuteIfBound(PeerId, EAccelByteP2PConnectionStatus::FailedGettingTurnServer);
+					OnWebRTCDataChannelConnectedDelegate.ExecuteIfBound(PeerChannel, false);
+					OnWebRTCRequestConnectFinishedDelegate.ExecuteIfBound(PeerChannel, EAccelByteP2PConnectionStatus::FailedGettingTurnServer);
 				}));
 	}
 	else
@@ -109,8 +111,8 @@ bool AccelByteNetworkManager::RequestConnect(const FString& PeerId)
 		// Username password possible empty if no authentication required on TURN server
 		GConfig->GetString(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerUsername"), TurnUserName, GEngineIni);
 		GConfig->GetString(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerPassword"), TurnPassword, GEngineIni);
-		TSharedPtr<AccelByteICEBase> Rtc = CreateNewConnection(PeerId);
-		PeerIdToICEConnectionMap.Add(PeerId, Rtc);
+		TSharedPtr<AccelByteICEBase> Rtc = CreateNewConnection(PeerChannel);
+		PeerIdToICEConnectionMap.Add(PeerChannel, Rtc);
 		Rtc->RequestConnect(TurnHost, TurnPort, TurnUserName, TurnPassword);
 	}
 	return true;
@@ -130,22 +132,29 @@ void AccelByteNetworkManager::Setup(AccelByte::FApiClientPtr InApiClientPtr)
 
 	Signaling->SetOnWebRTCSignalingMessage(AccelByteSignalingBase::OnWebRTCSignalingMessage::CreateRaw(this, &AccelByteNetworkManager::OnSignalingMessage));
 
+	GConfig->GetInt(TEXT("AccelByteNetworkUtilities"), TEXT("RequestConnectTimeout"), RequestConnectTimeout, GEngineIni);
+
 	// setup tick
 	FTickerDelegate TickerDelegate = FTickerDelegate::CreateRaw(this, &AccelByteNetworkManager::Tick);
 	FTickerAlias::GetCoreTicker().AddTicker(TickerDelegate, 0.5);
 }
 
-bool AccelByteNetworkManager::SendTo(const uint8* Data, int32 Count, int32& BytesSent, const FString& PeerId)
+bool AccelByteNetworkManager::SendTo(const uint8* Data, int32 Count, int32& BytesSent, const FString& PeerChannel)
 {
-	if (!PeerIdToICEConnectionMap.Contains(PeerId))
+	if (!PeerIdToICEConnectionMap.Contains(PeerChannel))
 	{
 		return false;
 	}
-	TSharedPtr<AccelByteICEBase> Rtc = PeerIdToICEConnectionMap[PeerId];
+	TSharedPtr<AccelByteICEBase> Rtc = PeerIdToICEConnectionMap[PeerChannel];
 	return Rtc->Send(Data, Count, BytesSent);
 }
 
-bool AccelByteNetworkManager::RecvFrom(uint8* Data, int32 BufferSize, int32& BytesRead, FString& PeerId)
+bool AccelByteNetworkManager::SendTo(const uint8* Data, int32 Count, int32& BytesSent, const FString &PeerId, int32 Channel)
+{
+	return SendTo(Data, Count, BytesSent, FString::Printf(TEXT("%s:%d"), *PeerId, Channel));
+}
+
+bool AccelByteNetworkManager::RecvFrom(uint8* Data, int32 BufferSize, int32& BytesRead, FString& PeerId, int32 &Channel)
 {
 	bool bIsReadSuccess = false;
 	if (!IsDataReadyToRead())
@@ -173,6 +182,7 @@ bool AccelByteNetworkManager::RecvFrom(uint8* Data, int32 BufferSize, int32& Byt
 	{
 		bIsReadSuccess = true;
 		PeerId = LastReadData->PeerId;
+		Channel = LastReadData->Channel;
 		const int32 LastOffset = Offset;
 		const int32 RealNum = Num - Offset;
 		if (BufferSize >= RealNum)
@@ -254,62 +264,74 @@ bool AccelByteNetworkManager::IsDataReadyToRead() const
 
 void AccelByteNetworkManager::OnSignalingMessage(const FString& PeerId, const FString& Message)
 {
-	if (Message.Equals(HOST_CHECK_MESSAGE))
+	FString Base64Decoded;
+	FBase64::Decode(Message, Base64Decoded);
+	UE_LOG_ABSIGNALING(Verbose, TEXT("Signaling message from: %s; Message: %s"), *PeerId, *Base64Decoded);
+	FAccelByteSignalingMessage SignalingMessage;
+	if(!FJsonObjectConverter::JsonObjectStringToUStruct(Base64Decoded, &SignalingMessage))
 	{
-		Signaling->SendMessage(PeerId,
-			FString::Printf(TEXT("%s%s%d"), HOST_CHECK_MESSAGE, HOST_CHECK_REPLY_DELIMITER, bIsHosting));
+		UE_LOG_ABSIGNALING(Error, TEXT("unable to convert json string to FAccelByteSignalingMessage"))
 		return;
 	}
-
-	TSharedPtr<AccelByteICEBase> Conn;
-	if (!PeerIdToICEConnectionMap.Contains(PeerId))
+	const FString PeerChannel = FString::Printf(TEXT("%s:%d"), *PeerId, SignalingMessage.Channel);
+	
+	if(SignalingMessage.Type.Equals(SIGNALING_TYPE_CHECK_HOST))
 	{
-		Conn = CreateNewConnection(PeerId);
-		PeerIdToICEConnectionMap.Add(PeerId, Conn);
+		SignalingMessage.Type = SIGNALING_TYPE_CHECK_HOST_REPLY;
+		SignalingMessage.Data = bIsHosting ? HOST_CHECK_MESSAGE_HOSTING : HOST_CHECK_MESSAGE_NOT_HOSTING;
+		Signaling->SendMessage(PeerId, SignalingMessage);
+		return;
+	}
+	
+	TSharedPtr<AccelByteICEBase> Conn;
+	if (!PeerIdToICEConnectionMap.Contains(PeerChannel))
+	{
+		Conn = CreateNewConnection(PeerChannel);
+		PeerIdToICEConnectionMap.Add(PeerChannel, Conn);
 	}
 	else
 	{
-		Conn = PeerIdToICEConnectionMap[PeerId];
+		Conn = PeerIdToICEConnectionMap[PeerChannel];
 	}
 	check(Conn.IsValid());
-	Conn->OnSignalingMessage(Message);
+	Conn->OnSignalingMessage(SignalingMessage);
 }
 
-void AccelByteNetworkManager::IncomingData(const FString& FromPeerId, const uint8* Data, int32 Count)
+void AccelByteNetworkManager::IncomingData(const FString& FromPeerId, int32 Channel, const uint8* Data, int32 Count)
 {
 	if(Count > 0)
 	{
-		QueueDatas.Enqueue(MakeShared<ICEData>(FromPeerId, TArray<uint8>((uint8*)Data, Count)));
+		QueueDatas.Enqueue(MakeShared<ICEData>(FromPeerId, Channel, TArray<uint8>((uint8*)Data, Count)));
 	}
 }
 
-void AccelByteNetworkManager::RTCConnected(const FString& PeerId, const EP2PConnectionType& P2PConnectionType)
+void AccelByteNetworkManager::RTCConnected(const FString& PeerChannel, const EP2PConnectionType& P2PConnectionType)
 {
-	UE_LOG_ABNET(Log, TEXT("ICE connected: %s"), *PeerId);
+	UE_LOG_ABNET(Log, TEXT("ICE connected: %s"), *PeerChannel);
 	FScopeLock ScopeLock(&LockObject);
-	PeerRequestConnectTime.Remove(PeerId);
-	OnWebRTCDataChannelConnectedDelegate.ExecuteIfBound(PeerId, true);
-	OnWebRTCRequestConnectFinishedDelegate.ExecuteIfBound(PeerId, EAccelByteP2PConnectionStatus::Success);
+	PeerRequestConnectTime.Remove(PeerChannel);
+	OnWebRTCDataChannelConnectedDelegate.ExecuteIfBound(PeerChannel, true);
+	OnWebRTCRequestConnectFinishedDelegate.ExecuteIfBound(PeerChannel, EAccelByteP2PConnectionStatus::Success);
 
 	SendMetricData(P2PConnectionType);
 }
 
-void AccelByteNetworkManager::RTCClosed(const FString& PeerId)
+void AccelByteNetworkManager::RTCClosed(const FString& PeerChannel)
 {
-	UE_LOG_ABNET(Log, TEXT("ICE closed: %s"), *PeerId);
+	UE_LOG_ABNET(Log, TEXT("ICE closed: %s"), *PeerChannel);
 	FScopeLock ScopeLock(&LockObject);
-	PeerRequestConnectTime.Remove(PeerId);
-	if (PeerIdToICEConnectionMap.Contains(PeerId))
+	PeerRequestConnectTime.Remove(PeerChannel);
+	if (PeerIdToICEConnectionMap.Contains(PeerChannel))
 	{
-		ScheduleToDestroy.Enqueue(PeerId);
-		OnWebRTCDataChannelClosedDelegate.ExecuteIfBound(PeerId);
+		ScheduleToDestroy.Enqueue(PeerChannel);
+		OnWebRTCDataChannelClosedDelegate.ExecuteIfBound(PeerChannel);
 	}
 }
 
-TSharedPtr<AccelByteICEBase> AccelByteNetworkManager::CreateNewConnection(const FString& PeerId)
+TSharedPtr<AccelByteICEBase> AccelByteNetworkManager::CreateNewConnection(const FString& PeerChannel)
 {
 #ifdef LIBJUICE
-	TSharedPtr<AccelByteICEBase> Rtc = MakeShared<AccelByteJuice>(PeerId);
+	TSharedPtr<AccelByteICEBase> Rtc = MakeShared<AccelByteJuice>(PeerChannel);
 #else
 	TSharedPtr<AccelByteICEBase> Rtc = MakeShared<AccelByteNullICEConnection>(PeerId);
 #endif
@@ -320,7 +342,7 @@ TSharedPtr<AccelByteICEBase> AccelByteNetworkManager::CreateNewConnection(const 
 	Rtc->SetOnICEDataChannelConnectionErrorDelegate(AccelByteICEBase::OnICEDataChannelConnectionError::CreateRaw(this, &AccelByteNetworkManager::OnICEConnectionErrorCallback));
 	{
 		FScopeLock ScopeLock(&LockObject);
-		PeerRequestConnectTime.Add(PeerId, FDateTime::Now());
+		PeerRequestConnectTime.Add(PeerChannel, FDateTime::Now());
 	}
 	return Rtc;
 }
@@ -334,7 +356,7 @@ bool AccelByteNetworkManager::Tick(float /*DeltaTime*/)
 		for(auto &Elem: PeerRequestConnectTime)
 		{
 			// 30 seconds for connection timeout
-			if(now.ToUnixTimestamp() - Elem.Value.ToUnixTimestamp() > 30)
+			if(now.ToUnixTimestamp() - Elem.Value.ToUnixTimestamp() > RequestConnectTimeout)
 			{
 				if(PeerRequestConnectTime.Contains(Elem.Key))
 				{

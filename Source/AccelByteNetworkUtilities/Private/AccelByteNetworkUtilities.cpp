@@ -126,6 +126,19 @@ void FAccelByteNetworkUtilitiesModule::DisableHosting()
 	AccelByteNetworkManager::Instance().DisableHosting();
 }
 
+TTuple<FString, int32> FAccelByteNetworkUtilitiesModule::ExtractPeerAndChannel(const FString &PeerId)
+{
+	const int32 ColonIndex = PeerId.Find(TEXT(":"));
+	if(ColonIndex > 0)
+	{
+		const FString Peer = PeerId.Left(ColonIndex);
+		const FString ChannelStr = PeerId.Mid(ColonIndex+1, PeerId.Len() - ColonIndex);
+		const int32 Channel = FCString::Atoi(*ChannelStr);
+		return TTuple<FString, int>(Peer, Channel); 
+	}
+	return TTuple<FString, int>(PeerId, 0);
+}
+
 #undef LOCTEXT_NAMESPACE
 
 IMPLEMENT_MODULE(FAccelByteNetworkUtilitiesModule, AccelByteNetworkUtilities)

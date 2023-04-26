@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [4.0.0](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/4.0.0%0D3.0.0) (2023-04-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* p2p connection using channel to connect each other now. This will not compatible with previous network utilities. The breaking changes only for client that uses Network Utilities directly.
+
+* chore: remove unused code
+
+* chore: use struct instead of json object
+
+* chore: remove unused code
+
+* chore: update versioning
+
+
+Approved-by: Rifqi Dewangga
+Approved-by: Wijanarko Sukma Pamungkas
+
+* Merged in feature/AR-5427-reactivep2punreal-make-network-m (pull request #41) ([2fc48d4](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/2fc48d4ad04e2e785f41e28fca4f0e42327e66d7)), closes [#41](https://accelbyte.atlassian.net/browse/41)
+
 ## [3.0.0](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/3.0.0%0D2.10.0) (2023-02-28)
 
 

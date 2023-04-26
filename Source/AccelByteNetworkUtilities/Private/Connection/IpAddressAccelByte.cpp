@@ -16,7 +16,7 @@ FInternetAddrAccelByte::FInternetAddrAccelByte()
 {
 }
 
-FInternetAddrAccelByte::FInternetAddrAccelByte(const FUniqueNetId& InSteamId) 
+FInternetAddrAccelByte::FInternetAddrAccelByte(const FUniqueNetId& InId) 
 {
 }
 
@@ -63,23 +63,30 @@ void FInternetAddrAccelByte::GetIp(uint32& OutAddr) const
 
 void FInternetAddrAccelByte::GetPort(int32& OutPort) const 
 {
-	OutPort = ACCELBYTE_SOCKET_PORT;
+	OutPort = Channel;
 }
 
 int32 FInternetAddrAccelByte::GetPort() const 
 {
-	return ACCELBYTE_SOCKET_PORT;
+	return Channel;
 }
 
 FString FInternetAddrAccelByte::ToString(bool bAppendPort) const 
 {
-	return NetId;
+	if (bAppendPort)
+	{
+		return FString::Printf(TEXT("%s:%d"), *NetId, Channel);
+	}
+	else
+	{
+		return NetId;
+	}	
 }
 
 bool FInternetAddrAccelByte::operator==(const FInternetAddr& Other) const 
 {
 	FInternetAddrAccelByte& OtherIp = (FInternetAddrAccelByte&)Other;
-	return OtherIp.NetId == NetId;
+	return OtherIp.NetId == NetId && OtherIp.Channel == Channel;
 }
 
 bool FInternetAddrAccelByte::operator!=(const FInternetAddrAccelByte& Other) const 
@@ -106,5 +113,12 @@ TSharedRef<FInternetAddr> FInternetAddrAccelByte::Clone() const
 {
 	TSharedRef<FInternetAddrAccelByte> Address = MakeShareable(new FInternetAddrAccelByte);
 	Address->NetId = NetId;
+	Address->Channel = Channel;
 	return Address;
+}
+
+void FInternetAddrAccelByte::SetPeerChannel(const FString& InPeerId, int32 InChannel)
+{
+	NetId = InPeerId;
+	Channel = InChannel;
 }

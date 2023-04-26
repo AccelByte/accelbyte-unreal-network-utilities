@@ -3,6 +3,7 @@
 // and restrictions contact your company contract manager.
 
 #pragma once
+#include "AccelByteSignalingModels.h"
 
 /*
  * AccelByteSignalingBase is the base interface for WebRTC ICE connection
@@ -46,7 +47,7 @@ public:
 	* @param PeerId destination of peer to sent
 	* @param Message to send
 	*/
-	virtual void SendMessage(const FString &PeerId, const FString &Message) = 0;
+	virtual void SendMessage(const FString &PeerId, const FAccelByteSignalingMessage &Message) = 0;
 
 	/**
 	* @brief Set the delegate when any data from signaling message
