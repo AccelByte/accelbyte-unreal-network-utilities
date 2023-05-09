@@ -7,9 +7,11 @@ public class AccelByteNetworkUtilities : ModuleRules
 {
 	public AccelByteNetworkUtilities(ReadOnlyTargetRules Target) : base(Target)
 	{
-		bAllowConfidentialPlatformDefines = true;
 		PrivateDefinitions.Add("ACCELBYTE_NETWORK_UTILITIES_PACKAGE=1");
-		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
+		
+		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+		bEnforceIWYU = true;
+		bAllowConfidentialPlatformDefines = true;
 
 		/*
 		 * Use platform string because Platform_PS5 not available on Unreal installed from Epic Launcher

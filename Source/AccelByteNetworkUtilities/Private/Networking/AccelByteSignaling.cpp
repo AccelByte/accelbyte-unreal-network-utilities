@@ -4,9 +4,12 @@
 
 #include "AccelByteSignaling.h"
 
+#include "Misc/Base64.h"
+
 #include "AccelByteNetworkUtilitiesLog.h"
 #include "Core/AccelByteRegistry.h"
 #include "Api/AccelByteLobbyApi.h"
+
 
 AccelByteSignaling::AccelByteSignaling(AccelByte::FApiClientPtr InApiClient):ApiClientPtr(InApiClient)
 {

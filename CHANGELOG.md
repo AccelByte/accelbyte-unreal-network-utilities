@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [4.0.1](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/4.0.1%0D4.0.0) (2023-05-09)
+
+
+### Bug Fixes
+
+* missing include headers when the project doesn't use shared precompiled headers ([9a5b32f](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/9a5b32f51eeedbba6660c42a5f2743c22086eaf3))
+
 ## [4.0.0](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/4.0.0%0D3.0.0) (2023-04-26)
 
 

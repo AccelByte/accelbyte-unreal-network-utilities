@@ -4,12 +4,14 @@
 
 #pragma once
 
+#include "CoreUObject.h"
+
 namespace AccelByte
 {
 namespace NetworkUtilities
 {
 UENUM()
-enum class EAccelByteP2PConnectionStatus
+enum class EAccelByteP2PConnectionStatus : uint8
 {
 	Success,
 	SignalingServerDisconnected,

@@ -12,6 +12,7 @@
 #include "Misc/Base64.h"
 #include "Misc/CommandLine.h"
 #include "HAL/UnrealMemory.h"
+#include "Misc/ConfigCacheIni.h"
 #include "Core/AccelByteDefines.h"
 #include "AccelByteSignalingConstants.h"
 
