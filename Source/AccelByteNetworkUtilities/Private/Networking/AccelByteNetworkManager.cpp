@@ -40,6 +40,13 @@ bool AccelByteNetworkManager::RequestConnect(const FString& PeerChannel)
 		}
 		return false;
 	}
+
+	if(!CachedTurnServer.Ip.IsEmpty())
+	{
+		RequestConnectWithTurnServer(PeerChannel, CachedTurnServer);
+		return true;
+	}
+	
 	bool bIsUseTurnManager = false;
 	GConfig->GetBool(TEXT("AccelByteNetworkUtilities"), TEXT("UseTurnManager"), bIsUseTurnManager, GEngineIni);
 	if(bIsUseTurnManager)
@@ -47,42 +54,7 @@ bool AccelByteNetworkManager::RequestConnect(const FString& PeerChannel)
 		ApiClientPtr->TurnManager.GetClosestTurnServer(THandler<FAccelByteModelsTurnServer>::CreateLambda(
 			[this, PeerChannel](const FAccelByteModelsTurnServer &Result)
 				{
-					UE_LOG_ABNET(Log, TEXT("Selected TURN server : %s:%d"), *Result.Ip, Result.Port);
-
-					SelectedTurnServerRegion = *Result.Region;
-
-					FString TurnSecret;
-					FString TurnUsername;
-					if(!GConfig->GetString(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerSecret"), TurnSecret, GEngineIni))
-					{
-						UE_LOG_ABNET(Error, TEXT("TurnServerSecret was missing in DefaultEngine.ini"));
-					}
-					if(!GConfig->GetString(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerUsername"), TurnUsername, GEngineIni))
-					{
-						TurnUsername = TEXT("accelbyte");
-						UE_LOG_ABNET(Warning, TEXT("TurnServerUsername was missing in DefaultEngine.ini, using default username"));
-					}
-
-					if(!TurnSecret.IsEmpty())
-					{
-						UE_LOG_ABNET(Log, TEXT("TURN using static auth secret"));
-						// This only used once to login to turn server. Once logged to turn, the lifetime does not take into account.
-						// The turn session already handled automatically by the ICE library and turn server
-						const int64 lifeTime = 5 * 60; // 5 minutes.
-						const int64 curTime = Result.Current_time + lifeTime;
-						FString Username = FString::Printf(TEXT("%lld:%s"), curTime, *TurnUsername);
-						uint8 DataOut[20]; //20 is sha1 length
-						FSHA1::HMACBuffer(TCHAR_TO_ANSI(*TurnSecret), TurnSecret.Len(), TCHAR_TO_ANSI(*Username), Username.Len(), DataOut);
-						FString Password = FBase64::Encode(DataOut, 20);
-
-						TSharedPtr<AccelByteICEBase> Rtc = CreateNewConnection(PeerChannel);
-						PeerIdToICEConnectionMap.Add(PeerChannel, Rtc);
-						Rtc->RequestConnect(Result.Ip, Result.Port, Username, Password);
-					} else
-					{
-						UE_LOG_ABNET(Log, TEXT("TURN using dynamic auth secret"));
-						RequestCredentialAndConnect(PeerChannel, Result);
-					}
+					RequestConnectWithTurnServer(PeerChannel, Result);
 				}),
 				FErrorHandler::CreateLambda([this, PeerChannel](int32, const FString &ErrorMessage)
 				{
@@ -133,6 +105,7 @@ void AccelByteNetworkManager::Setup(AccelByte::FApiClientPtr InApiClientPtr)
 	Signaling->SetOnWebRTCSignalingMessage(AccelByteSignalingBase::OnWebRTCSignalingMessage::CreateRaw(this, &AccelByteNetworkManager::OnSignalingMessage));
 
 	GConfig->GetInt(TEXT("AccelByteNetworkUtilities"), TEXT("RequestConnectTimeout"), RequestConnectTimeout, GEngineIni);
+	GConfig->GetInt(TEXT("AccelByteNetworkUtilities"), TEXT("ConnectionIdleTimeout"), ConnectionIdleTimeout, GEngineIni);
 
 	// setup tick
 	FTickerDelegate TickerDelegate = FTickerDelegate::CreateRaw(this, &AccelByteNetworkManager::Tick);
@@ -222,10 +195,10 @@ bool AccelByteNetworkManager::HasPendingData(uint32& PendingDataSize)
 }
 
 void AccelByteNetworkManager::ClosePeerConnection(const FString& PeerId)
-{
-	UE_LOG_ABNET(Log, TEXT("Closing ICE connection to: %s"), *PeerId);
+{	
 	if (PeerIdToICEConnectionMap.Contains(PeerId))
 	{
+		UE_LOG_ABNET(Log, TEXT("Closing ICE connection to: %s"), *PeerId);
 		PeerIdToICEConnectionMap[PeerId]->ClosePeerConnection();
 		PeerIdToICEConnectionMap.Remove(PeerId);
 		OnWebRTCDataChannelClosedDelegate.ExecuteIfBound(PeerId);
@@ -255,6 +228,47 @@ void AccelByteNetworkManager::EnableHosting()
 void AccelByteNetworkManager::DisableHosting()
 {
 	bIsHosting = false;
+}
+
+void AccelByteNetworkManager::RequestConnectWithTurnServer(const FString& PeerChannel, const FAccelByteModelsTurnServer &TurnServer)
+{
+	UE_LOG_ABNET(Log, TEXT("Selected TURN server : %s:%d"), *TurnServer.Ip, TurnServer.Port);
+
+	CachedTurnServer = TurnServer;
+	SelectedTurnServerRegion = *TurnServer.Region;
+
+	FString TurnSecret;
+	FString TurnUsername;
+	if(!GConfig->GetString(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerSecret"), TurnSecret, GEngineIni))
+	{
+		UE_LOG_ABNET(Error, TEXT("TurnServerSecret was missing in DefaultEngine.ini"));
+	}
+	if(!GConfig->GetString(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerUsername"), TurnUsername, GEngineIni))
+	{
+		TurnUsername = TEXT("accelbyte");
+		UE_LOG_ABNET(Warning, TEXT("TurnServerUsername was missing in DefaultEngine.ini, using default username"));
+	}
+
+	if(!TurnSecret.IsEmpty())
+	{
+		UE_LOG_ABNET(Log, TEXT("TURN using static auth secret"));
+		// This only used once to login to turn server. Once logged to turn, the lifetime does not take into account.
+		// The turn session already handled automatically by the ICE library and turn server
+		const int64 lifeTime = 5 * 60; // 5 minutes.
+		const int64 curTime = TurnServer.Current_time + lifeTime;
+		FString Username = FString::Printf(TEXT("%lld:%s"), curTime, *TurnUsername);
+		uint8 DataOut[20]; //20 is sha1 length
+		FSHA1::HMACBuffer(TCHAR_TO_ANSI(*TurnSecret), TurnSecret.Len(), TCHAR_TO_ANSI(*Username), Username.Len(), DataOut);
+		FString Password = FBase64::Encode(DataOut, 20);
+
+		TSharedPtr<AccelByteICEBase> Rtc = CreateNewConnection(PeerChannel);
+		PeerIdToICEConnectionMap.Add(PeerChannel, Rtc);
+		Rtc->RequestConnect(TurnServer.Ip, TurnServer.Port, Username, Password);
+	} else
+	{
+		UE_LOG_ABNET(Log, TEXT("TURN using dynamic auth secret"));
+		RequestCredentialAndConnect(PeerChannel, TurnServer);
+	}
 }
 
 bool AccelByteNetworkManager::IsDataReadyToRead() const
@@ -302,6 +316,7 @@ void AccelByteNetworkManager::IncomingData(const FString& FromPeerId, int32 Chan
 	if(Count > 0)
 	{
 		QueueDatas.Enqueue(MakeShared<ICEData>(FromPeerId, Channel, TArray<uint8>((uint8*)Data, Count)));
+		LastReceiveData.Add(FString::Printf(TEXT("%s:%d"), *FromPeerId, Channel), FDateTime::Now());
 	}
 }
 
@@ -376,12 +391,48 @@ bool AccelByteNetworkManager::Tick(float /*DeltaTime*/)
 			}
 		}
 	}
+	
+	ToRemove.Empty();
+	for(auto &Elem : LastReceiveData)
+	{
+		// close idle connection
+		if(now.ToUnixTimestamp() - Elem.Value.ToUnixTimestamp() > ConnectionIdleTimeout)
+		{
+			ScheduleToDestroy.Enqueue(Elem.Key);
+		}
+	}
+	for(auto &Elem : LastTouchedMap)
+	{
+		// timeout for 20 seconds
+		if(now.ToUnixTimestamp() - Elem.Value.ToUnixTimestamp() > 20)
+		{
+			ToRemove.Add(Elem.Key);
+		}
+	}
+	for (int i = ToRemove.Num() - 1; i >= 0; i--)
+	{
+		LastTouchedMap.Remove(ToRemove[i]);
+	}
+
+	for(auto &Elem : ScheduledCloseMap)
+	{
+		// timeout for 20 seconds
+		if(now.ToUnixTimestamp() - Elem.Value.ToUnixTimestamp() > 20)
+		{
+			ScheduleToDestroy.Enqueue(Elem.Key);
+		}
+	}
 
 	FString PeerToDestroy;
 	while(ScheduleToDestroy.Dequeue(PeerToDestroy))
 	{
+		UE_LOG_ABNET(Log, TEXT("CLOSING: %s"), *PeerToDestroy);
+		ScheduledCloseMap.Remove(PeerToDestroy);
+		LastReceiveData.Remove(PeerToDestroy);
+		LastTouchedMap.Remove(PeerToDestroy);
 		ClosePeerConnection(PeerToDestroy);
 	}
+	
 	return true;
 }
 
@@ -443,4 +494,22 @@ void AccelByteNetworkManager::SendMetricData(const EP2PConnectionType& P2PConnec
 		SelectedTurnServerRegion.Empty();
 		UE_LOG_ABNET(Error, TEXT("Error sending metric data: %d %s"), ErrorCode, *ErrorMessage);
 	}));
+}
+
+void AccelByteNetworkManager::TouchConnection(const FString &PeerChannel)
+{
+	if(ScheduledCloseMap.Contains(PeerChannel))
+	{
+		ScheduledCloseMap.Remove(PeerChannel);
+	}
+	LastTouchedMap.Add(PeerChannel, FDateTime::Now());
+}
+
+void AccelByteNetworkManager::ScheduleClose(const FString &PeerChannel)
+{
+	if(LastTouchedMap.Contains(PeerChannel))
+	{
+		return;
+	}
+	ScheduledCloseMap.Add(PeerChannel, FDateTime::Now());
 }

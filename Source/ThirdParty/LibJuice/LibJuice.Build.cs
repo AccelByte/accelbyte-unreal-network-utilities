@@ -124,5 +124,21 @@ public class LibJuice : ModuleRules
 			}
 			PublicDelayLoadDLLs.Add("libjuice.so");
 		}
+		else if (PlatformString == "MAC")
+		{
+			PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "include"));
+			if (Target.Configuration == UnrealTargetConfiguration.Debug ||
+			    Target.Configuration == UnrealTargetConfiguration.Development ||
+			    Target.Configuration == UnrealTargetConfiguration.DebugGame)
+			{
+				RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "mac/debug/libjuice.a"));
+				PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "mac/debug/libjuice.a"));
+			}
+			else
+			{
+				RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "mac/release/libjuice.a"));
+				PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "mac/release/libjuice.a"));
+			}
+		}
 	}
 }

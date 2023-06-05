@@ -5,6 +5,7 @@
 #include "NetDriverAccelByte.h"
 #include "AccelByteNetworkUtilitiesConstant.h"
 #include "SocketAccelByte.h"
+#include "Misc/CommandLine.h"
 
 void UIpNetDriverAccelByte::PostInitProperties() 
 {

@@ -1,10 +1,14 @@
-﻿// Copyright (c) 2021 AccelByte Inc. All Rights Reserved.
+// Copyright (c) 2021 AccelByte Inc. All Rights Reserved.
 // This is licensed software from AccelByte Inc, for limitations
 // and restrictions contact your company contract manager.
 
 #ifdef LIBJUICE
 
 #include "AccelByteJuice.h"
+
+#include "Async/Async.h"
+#include "Misc/ConfigCacheIni.h"
+
 #include "AccelByteSignalingBase.h"
 #include "Dom/JsonObject.h"
 #include "AccelByteNetworkUtilitiesLog.h"
@@ -349,7 +353,16 @@ void AccelByteJuice::JuiceStateChanged(juice_state_t State)
 		result = juice_get_selected_candidates(JuiceAgent, localCandidate, MAX_ADDRESS_LENGTH, remoteCandidate, MAX_ADDRESS_LENGTH);
 		UE_LOG_ABNET(Log, TEXT("selected candidate: %d; local : %hs; remote: %hs"), result, localCandidate, remoteCandidate);
 #endif
+
+#if PLATFORM_MAC
+		// mac issue, need to be called from game thread
+		AsyncTask(ENamedThreads::GameThread, [this]()
+		{
+			OnICEDataChannelConnectedDelegate.ExecuteIfBound(PeerChannel, GetP2PConnectionType());
+		});
+#else		
 		OnICEDataChannelConnectedDelegate.ExecuteIfBound(PeerChannel, GetP2PConnectionType());
+#endif
 	}
 	else if(State == JUICE_STATE_FAILED)
 	{

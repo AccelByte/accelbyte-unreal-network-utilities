@@ -74,7 +74,11 @@ bool FSocketAccelByte::SendTo(const uint8* Data, int32 Count, int32& BytesSent, 
 	const FInternetAddrAccelByte& Dest = static_cast<const FInternetAddrAccelByte&>(Destination);
 	NetId = Dest.NetId;
 	Channel = Dest.GetPort();
-	return AccelByteNetworkManager::Instance().SendTo(Data, Count, BytesSent, Dest.ToString(true));
+	if(RedirectChannel == 0)
+	{
+		return AccelByteNetworkManager::Instance().SendTo(Data, Count, BytesSent, NetId, Channel);
+	}
+	return AccelByteNetworkManager::Instance().SendTo(Data, Count, BytesSent, NetId, RedirectChannel);
 }
 
 bool FSocketAccelByte::Send(const uint8* Data, int32 Count, int32& BytesSent) {
@@ -88,7 +92,15 @@ bool FSocketAccelByte::RecvFrom(uint8* Data, int32 BufferSize, int32& BytesRead,
 	int32 SourceChannel;
 	if (AccelByteNetworkManager::Instance().RecvFrom(Data, BufferSize, BytesRead, SourcePeer, SourceChannel)) 
 	{
-		static_cast<FInternetAddrAccelByte&>(Source).SetPeerChannel(SourcePeer, SourceChannel);
+		if(RedirectChannel == 0)
+		{
+			static_cast<FInternetAddrAccelByte&>(Source).SetPeerChannel(SourcePeer, SourceChannel);
+		}
+		else
+		{
+			static_cast<FInternetAddrAccelByte&>(Source).SetPeerChannel(SourcePeer, Channel);
+		}
+		
 		return true;
 	}
 	return false;
@@ -220,4 +232,9 @@ bool FSocketAccelByte::SetReceiveBufferSize(int32 Size, int32& NewSize)
 int32 FSocketAccelByte::GetPortNo()
 {
 	return Channel;
+}
+
+void FSocketAccelByte::SetRedirectChannel(int32 port)
+{
+	RedirectChannel = port;
 }

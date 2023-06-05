@@ -126,6 +126,10 @@ public:
 	 */
 	void DisableHosting();
 
+	void TouchConnection(const FString &PeerChannel);
+
+	void ScheduleClose(const FString &PeerChannel);
+
 	OnWebRTCDataChannelConnected OnWebRTCDataChannelConnectedDelegate;
 	OnWebRTCRequestConnectFinished OnWebRTCRequestConnectFinishedDelegate;
 	OnWebRTCDataChannelClosed OnWebRTCDataChannelClosedDelegate;
@@ -172,6 +176,29 @@ private:
 
 	// Connect timeout in seconds
 	int32 RequestConnectTimeout = 30;
+
+	// cached the selected turn server
+	FAccelByteModelsTurnServer CachedTurnServer;
+
+	// touch the connection to prevent connection close
+	TMap<FString, FDateTime> LastTouchedMap;
+
+	// schedule the connection to close
+	TMap<FString, FDateTime> ScheduledCloseMap;
+
+	// last data receive by the connection
+	TMap<FString, FDateTime> LastReceiveData;
+
+	// connection idle timeout in seconds
+	int32 ConnectionIdleTimeout = 60;
+
+	/**
+	 * @brief Request connect with selected turn server
+	 *
+	 * @param PeerChannel peer and channel to connect to
+	 * @param TurnServer turn server use to make the p2p connection
+	 */
+	void RequestConnectWithTurnServer(const FString& PeerChannel, const FAccelByteModelsTurnServer &TurnServer); 
 
 	/**
 	 * @brief Check whatever there is data ready to read from cached data (LastReadData)

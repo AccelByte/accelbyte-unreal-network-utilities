@@ -23,7 +23,11 @@ private:
 	 */
 	FString NetId;
 
-	int32 Channel;
+	/* Channel for P2P connection */
+	int32 Channel = 0;
+
+	/* Flag if the port is redirected for P2P connection */
+	int32 RedirectChannel = 0;
 
 public:
 	FSocketAccelByte();
@@ -65,4 +69,6 @@ public:
 	virtual bool SetReceiveBufferSize(int32 Size, int32& NewSize) override;
 	virtual int32 GetPortNo() override;
 	//~ End FSocket Interface
+
+	void SetRedirectChannel(int32 port);
 };

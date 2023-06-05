@@ -3,6 +3,7 @@
 // and restrictions contact your company contract manager.
 
 #pragma once
+#include "UObject/ObjectMacros.h"
 
 #include "CoreUObject.h"
 

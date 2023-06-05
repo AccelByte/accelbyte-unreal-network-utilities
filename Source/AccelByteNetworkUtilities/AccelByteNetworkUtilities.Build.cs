@@ -32,7 +32,8 @@ public class AccelByteNetworkUtilities : ModuleRules
 		    PlatformString == "PS4" ||
 		    PlatformString == "PS5" ||
 		    PlatformString == "SWITCH" ||
-		    PlatformString == "LINUX")
+		    PlatformString == "LINUX" ||
+		    PlatformString == "MAC")
 		{
 			PrivateDefinitions.Add("LIBJUICE");
 		}
