@@ -23,6 +23,13 @@ struct ICEData
 	}
 };
 
+struct ICETimeLog
+{
+	FString PeerId;
+	FDateTime DateTime;
+	ICETimeLog(const FString &PeerId, const FDateTime &Date): PeerId(PeerId), DateTime(Date){}
+};
+
 AccelByteNetworkManager& AccelByteNetworkManager::Instance()
 {
 	static AccelByteNetworkManager AccelByteNetworkManagerInstance;
@@ -316,7 +323,7 @@ void AccelByteNetworkManager::IncomingData(const FString& FromPeerId, int32 Chan
 	if(Count > 0)
 	{
 		QueueDatas.Enqueue(MakeShared<ICEData>(FromPeerId, Channel, TArray<uint8>((uint8*)Data, Count)));
-		LastReceiveData.Add(FString::Printf(TEXT("%s:%d"), *FromPeerId, Channel), FDateTime::Now());
+		LastReceiveData.Enqueue(MakeShared<ICETimeLog>(FString::Printf(TEXT("%s:%d"), *FromPeerId, Channel), FDateTime::Now()));
 	}
 }
 
@@ -393,7 +400,13 @@ bool AccelByteNetworkManager::Tick(float /*DeltaTime*/)
 	}
 	
 	ToRemove.Empty();
-	for(auto &Elem : LastReceiveData)
+	TMap<FString, FDateTime> LastReceiveMap;
+	TSharedPtr<ICETimeLog> LastReceiveDataItem;
+	while(LastReceiveData.Dequeue(LastReceiveDataItem))
+	{
+		LastReceiveMap.Add(LastReceiveDataItem->PeerId, LastReceiveDataItem->DateTime);
+	}
+	for(auto &Elem : LastReceiveMap)
 	{
 		// close idle connection
 		if(now.ToUnixTimestamp() - Elem.Value.ToUnixTimestamp() > ConnectionIdleTimeout)
@@ -401,6 +414,8 @@ bool AccelByteNetworkManager::Tick(float /*DeltaTime*/)
 			ScheduleToDestroy.Enqueue(Elem.Key);
 		}
 	}
+	
+	FScopeLock ScopeLock(&LockObjectDisconnect);
 	for(auto &Elem : LastTouchedMap)
 	{
 		// timeout for 20 seconds
@@ -428,7 +443,6 @@ bool AccelByteNetworkManager::Tick(float /*DeltaTime*/)
 	{
 		UE_LOG_ABNET(Log, TEXT("CLOSING: %s"), *PeerToDestroy);
 		ScheduledCloseMap.Remove(PeerToDestroy);
-		LastReceiveData.Remove(PeerToDestroy);
 		LastTouchedMap.Remove(PeerToDestroy);
 		ClosePeerConnection(PeerToDestroy);
 	}
@@ -498,6 +512,7 @@ void AccelByteNetworkManager::SendMetricData(const EP2PConnectionType& P2PConnec
 
 void AccelByteNetworkManager::TouchConnection(const FString &PeerChannel)
 {
+	FScopeLock ScopeLock(&LockObjectDisconnect);
 	if(ScheduledCloseMap.Contains(PeerChannel))
 	{
 		ScheduledCloseMap.Remove(PeerChannel);
@@ -507,6 +522,7 @@ void AccelByteNetworkManager::TouchConnection(const FString &PeerChannel)
 
 void AccelByteNetworkManager::ScheduleClose(const FString &PeerChannel)
 {
+	FScopeLock ScopeLock(&LockObjectDisconnect);
 	if(LastTouchedMap.Contains(PeerChannel))
 	{
 		return;

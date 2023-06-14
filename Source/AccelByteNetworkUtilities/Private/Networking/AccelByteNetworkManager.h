@@ -12,7 +12,7 @@ class AccelByteICEBase;
 class AccelByteSignalingBase;
 
 struct ICEData;
-
+struct ICETimeLog;
 
 /**
  * @brief Manager for ICE connection
@@ -152,6 +152,7 @@ private:
 
 	//for mutex lock
 	FCriticalSection LockObject;
+	FCriticalSection LockObjectDisconnect;
 
 	/*
 	 * Store the peer data to queue because it has different read mechanism
@@ -187,7 +188,7 @@ private:
 	TMap<FString, FDateTime> ScheduledCloseMap;
 
 	// last data receive by the connection
-	TMap<FString, FDateTime> LastReceiveData;
+	TQueue<TSharedPtr<ICETimeLog>, EQueueMode::Mpsc> LastReceiveData;
 
 	// connection idle timeout in seconds
 	int32 ConnectionIdleTimeout = 60;
