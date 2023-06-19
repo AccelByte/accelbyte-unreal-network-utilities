@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [4.1.0](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/4.1.0%0D4.0.3) (2023-06-19)
+
+
+### Features
+
+* update TypeHash implementation for IpAddressAccelByte to support Unreal Engine 5.2 ([d3d280c](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/d3d280c254ad3efb6b5128503e1f2858d013ae13))
+
 ### [4.0.3](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/4.0.3%0D4.0.2) (2023-06-14)
 
 

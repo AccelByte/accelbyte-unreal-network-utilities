@@ -96,7 +96,11 @@ bool FInternetAddrAccelByte::operator!=(const FInternetAddrAccelByte& Other) con
 
 uint32 FInternetAddrAccelByte::GetTypeHash() const 
 {
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 2
+	return GetTypeHashHelper(ToString(true));
+#else
 	return ::GetTypeHash(ToString(true));
+#endif
 }
 
 bool FInternetAddrAccelByte::IsValid() const 
