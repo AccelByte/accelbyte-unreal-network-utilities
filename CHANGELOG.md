@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [4.1.1](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/4.1.1%0D4.1.0) (2023-07-03)
+
+
+### Bug Fixes
+
+* error access TMap from multi thread ([e5ecf46](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/e5ecf46c169f4869f04fddc41134dce9be9ec5cb))
+
 ## [4.1.0](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/4.1.0%0D4.0.3) (2023-06-19)
 
 
