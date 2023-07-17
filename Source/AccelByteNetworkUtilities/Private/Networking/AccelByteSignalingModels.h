@@ -13,16 +13,16 @@ struct FAccelByteSignalingTurnServer
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AccelByte | NetworkUtilities")
-	FString Host;
+	FString Host {};
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AccelByte | NetworkUtilities")
-	int32 Port;
+	int32 Port {};
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AccelByte | NetworkUtilities")
-	FString Username;
+	FString Username {};
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AccelByte | NetworkUtilities")
-	FString Password;
+	FString Password {};
 };
 
 USTRUCT(BlueprintType)
@@ -31,14 +31,14 @@ struct FAccelByteSignalingMessage
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AccelByte | NetworkUtilities")
-	FString Type;
+	FString Type {};
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AccelByte | NetworkUtilities")
-	int32 Channel;
+	int32 Channel {};
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AccelByte | NetworkUtilities")
-	FString Data;
+	FString Data {};
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AccelByte | NetworkUtilities")
-	FAccelByteSignalingTurnServer TurnServer;
+	FAccelByteSignalingTurnServer TurnServer {};
 };

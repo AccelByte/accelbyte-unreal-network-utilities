@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [4.1.2](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/4.1.2%0D4.1.1) (2023-07-17)
+
+
+### Bug Fixes
+
+* initialize USTRUCT member to default value ([92ba9bb](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/92ba9bb87f53a12a5ad5ab7cebd02e9cdf8f0f03))
+
 ### [4.1.1](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/4.1.1%0D4.1.0) (2023-07-03)
 
 
