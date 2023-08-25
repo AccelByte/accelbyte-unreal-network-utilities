@@ -3,6 +3,7 @@
 // and restrictions contact your company contract manager.
 
 #include "IpAddressAccelByte.h"
+#include "Runtime/Launch/Resources/Version.h"
 #include "Containers/UnrealString.h"
 #include "AccelByteNetworkUtilitiesConstant.h"
 #include "OnlineSubsystemTypes.h"
