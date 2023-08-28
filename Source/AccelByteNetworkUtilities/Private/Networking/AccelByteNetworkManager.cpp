@@ -13,6 +13,8 @@
 #include "AccelByteSignalingConstants.h"
 #include "AccelByteSignalingModels.h"
 
+using namespace AccelByte::NetworkUtilities;
+
 struct ICEData
 {
 	FString PeerId;
@@ -472,7 +474,7 @@ void AccelByteNetworkManager::RequestCredentialAndConnect(const FString& PeerId,
 		}));
 }
 
-void AccelByteNetworkManager::OnICEConnectionErrorCallback(const FString& PeerId, const NetworkUtilities::EAccelByteP2PConnectionStatus& Status)
+void AccelByteNetworkManager::OnICEConnectionErrorCallback(const FString& PeerId, const EAccelByteP2PConnectionStatus& Status)
 {
 	FScopeLock ScopeLock(&LockObject);
 	OnWebRTCDataChannelConnectedDelegate.ExecuteIfBound(PeerId, false);

@@ -6,8 +6,6 @@
 #include "Core/AccelByteApiClient.h"
 #include "AccelByteNetworkingStatus.h"
 
-using namespace NetworkUtilities;
-
 class AccelByteICEBase;
 class AccelByteSignalingBase;
 
@@ -35,7 +33,7 @@ public:
 	 * @param param1 peer id of the remote
 	 * @param param2 enum indicating status of the connection
 	 */
-	DECLARE_DELEGATE_TwoParams(OnWebRTCRequestConnectFinished, const FString&, const NetworkUtilities::EAccelByteP2PConnectionStatus&);
+	DECLARE_DELEGATE_TwoParams(OnWebRTCRequestConnectFinished, const FString&, const AccelByte::NetworkUtilities::EAccelByteP2PConnectionStatus&);
 
 	/**
 	 * @brief Delegate when any ICE connection closed
@@ -268,7 +266,7 @@ private:
 	 * @param PeerId user id of the peer
 	 * @param Status status of the connection
 	 */
-	void OnICEConnectionErrorCallback(const FString &PeerId, const EAccelByteP2PConnectionStatus &Status);
+	void OnICEConnectionErrorCallback(const FString &PeerId, const AccelByte::NetworkUtilities::EAccelByteP2PConnectionStatus &Status);
 
 	/**
 	 * @brief Send info about P2P connection type and selected turn server region to BE

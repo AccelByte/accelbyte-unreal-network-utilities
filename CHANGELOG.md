@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [4.2.2](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/4.2.2%0D4.2.1) (2023-08-28)
+
+
+### Bug Fixes
+
+* remove 'using namespace' in public header ([c721b52](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/c721b52a85a7a653e7ab71e5e76cff81c37d157d))
+
 ### [4.2.1](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/4.2.1%0D4.2.0) (2023-08-25)
 
 

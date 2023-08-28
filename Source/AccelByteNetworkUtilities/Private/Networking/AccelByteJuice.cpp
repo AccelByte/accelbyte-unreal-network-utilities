@@ -20,6 +20,8 @@
 #include "Core/AccelByteDefines.h"
 #include "AccelByteSignalingConstants.h"
 
+using namespace AccelByte::NetworkUtilities;
+
 #define DO_TASK(task) FFunctionGraphTask::CreateAndDispatchWhenReady(task, TStatId(), nullptr);
 #define MAX_ADDRESS_LENGTH 256
 

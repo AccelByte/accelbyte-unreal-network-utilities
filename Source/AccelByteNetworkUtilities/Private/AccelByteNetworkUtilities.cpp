@@ -9,6 +9,8 @@
 #include "AccelByteNetworkUtilitiesConstant.h"
 #include "Networking/AccelByteNetworkManager.h"
 
+using namespace AccelByte;
+
 #define LOCTEXT_NAMESPACE "FAccelByteNetworkUtilitiesModule"
 
 DEFINE_LOG_CATEGORY(AccelByteNetUtil);

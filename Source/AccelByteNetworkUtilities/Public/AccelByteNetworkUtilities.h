@@ -7,8 +7,6 @@
 #include "Core/AccelByteMultiRegistry.h"
 #include "AccelByteNetworkingStatus.h"
 
-using namespace NetworkUtilities;
-
 class ACCELBYTENETWORKUTILITIES_API FAccelByteNetworkUtilitiesModule : public IModuleInterface
 {
 public:
@@ -26,7 +24,7 @@ public:
 	 * @param param1 peer id of the remote
 	 * @param param2 enum indicating status of the connection
 	 */
-	DECLARE_DELEGATE_TwoParams(OnICERequestConnectFinished, const FString&, const EAccelByteP2PConnectionStatus&);
+	DECLARE_DELEGATE_TwoParams(OnICERequestConnectFinished, const FString&, const AccelByte::NetworkUtilities::EAccelByteP2PConnectionStatus&);
 
 	/**
 	* @brief Delegate when any ICE connection closed

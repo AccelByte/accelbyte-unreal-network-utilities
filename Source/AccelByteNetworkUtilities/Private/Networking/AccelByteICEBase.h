@@ -10,8 +10,6 @@
 #include "Dom/JsonObject.h"
 #include "Models/AccelByteTurnModels.h"
 
-using namespace AccelByte::NetworkUtilities;
-
 class AccelByteSignalingBase;
 
 /**
@@ -35,7 +33,7 @@ public:
 	* @param Peer id of the target
 	* @param Status of the connection
 	*/
-	DECLARE_DELEGATE_TwoParams(OnICEDataChannelConnectionError, const FString&, const EAccelByteP2PConnectionStatus&);
+	DECLARE_DELEGATE_TwoParams(OnICEDataChannelConnectionError, const FString&, const AccelByte::NetworkUtilities::EAccelByteP2PConnectionStatus&);
 
 	/**
 	* @brief Delegate when ICE data channel is closed
