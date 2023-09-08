@@ -10,7 +10,11 @@ public class AccelByteNetworkUtilities : ModuleRules
 		PrivateDefinitions.Add("ACCELBYTE_NETWORK_UTILITIES_PACKAGE=1");
 		
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+#if UE_5_2_OR_LATER
+		IWYUSupport = IWYUSupport.Full;
+#else
 		bEnforceIWYU = true;
+#endif
 		bAllowConfidentialPlatformDefines = true;
 
 		/*
