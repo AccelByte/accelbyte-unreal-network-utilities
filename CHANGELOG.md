@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [4.2.4](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/4.2.4%0D4.2.3) (2023-09-11)
+
+
+### Bug Fixes
+
+* deprecation warning for IWYU support in Unreal Engine 5.2 ([85a642d](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/85a642d064e6184d850b65b6091d87f6c7473c62))
+* error when compiling without libjuice ([cdfcb82](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/cdfcb821aa776af161e14ab4b366192222ee4a3c))
+
 ### [4.2.3](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/4.2.3%0D4.2.2) (2023-09-08)
 
 

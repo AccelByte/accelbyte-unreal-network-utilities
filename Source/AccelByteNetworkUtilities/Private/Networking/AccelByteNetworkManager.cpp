@@ -357,7 +357,7 @@ TSharedPtr<AccelByteICEBase> AccelByteNetworkManager::CreateNewConnection(const 
 #ifdef LIBJUICE
 	TSharedPtr<AccelByteICEBase> Rtc = MakeShared<AccelByteJuice>(PeerChannel);
 #else
-	TSharedPtr<AccelByteICEBase> Rtc = MakeShared<AccelByteNullICEConnection>(PeerId);
+	TSharedPtr<AccelByteICEBase> Rtc = MakeShared<AccelByteNullICEConnection>(PeerChannel);
 #endif
 	Rtc->SetSignaling(Signaling.Get());
 	Rtc->SetOnICEDataChannelConnectedDelegate(AccelByteICEBase::OnICEDataChannelConnected::CreateRaw(this, &AccelByteNetworkManager::RTCConnected));
