@@ -6,7 +6,7 @@
 #include "AccelByteNetworkUtilitiesConstant.h"
 #include "SocketAccelByte.h"
 #include "Misc/CommandLine.h"
-#include "Engine/Public/EngineLogs.h"
+#include "EngineLogs.h"
 
 void UIpNetDriverAccelByte::PostInitProperties() 
 {
