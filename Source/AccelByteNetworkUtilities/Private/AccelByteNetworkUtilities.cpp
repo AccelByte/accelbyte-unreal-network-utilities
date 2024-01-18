@@ -128,6 +128,16 @@ void FAccelByteNetworkUtilitiesModule::DisableHosting()
 	AccelByteNetworkManager::Instance().DisableHosting();
 }
 
+void FAccelByteNetworkUtilitiesModule::SimulateNetworkSwitching()
+{
+	AccelByteNetworkManager::Instance().SimulateNetworkSwitching();
+}
+
+bool FAccelByteNetworkUtilitiesModule::IsAllPeerConnected()
+{
+	return AccelByteNetworkManager::Instance().IsPeerConnected();
+}
+
 TTuple<FString, int32> FAccelByteNetworkUtilitiesModule::ExtractPeerAndChannel(const FString &PeerId)
 {
 	const int32 ColonIndex = PeerId.Find(TEXT(":"));
@@ -139,6 +149,11 @@ TTuple<FString, int32> FAccelByteNetworkUtilitiesModule::ExtractPeerAndChannel(c
 		return TTuple<FString, int>(Peer, Channel); 
 	}
 	return TTuple<FString, int>(PeerId, 0);
+}
+
+FString FAccelByteNetworkUtilitiesModule::GeneratePeerChannelString(const FString& PeerId, int32 Channel)
+{
+	return FString::Printf(TEXT("%s:%d"), *PeerId, Channel);
 }
 
 #undef LOCTEXT_NAMESPACE

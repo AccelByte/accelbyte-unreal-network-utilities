@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [4.3.0](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/4.3.0%0D4.2.7) (2024-01-18)
+
+
+### Features
+
+* add reconnection support for libjuice agent in case of network switching ([8ca8af2](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/8ca8af2a3294ec92635f3f173342eb8ebf84f08a))
+
+
+### Bug Fixes
+
+* incorrect Ticker Delegate used in AccelByteJuice ([32416f7](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/32416f72b1ae0eb6650222cf1a0ad348c212c3b5))
+
 ### [4.2.7](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/4.2.7%0D4.2.6) (2023-10-30)
 
 

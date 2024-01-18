@@ -96,6 +96,16 @@ public:
 	 * @brief set to indicate the player is no longer hosting the game
 	 */
 	void DisableHosting();
+	
+	/**
+	 * [FOR GAUNTLET TEST ONLY] simulate network switching
+	 */
+	void SimulateNetworkSwitching();
+
+	/**
+	 * @brief [FOR GAUNTLET TEST ONLY] Check if all of the peer is connected or not
+	 */
+	bool IsAllPeerConnected();
 
 	/*
 	 * @brief Extract the peer id and the channel
@@ -103,4 +113,12 @@ public:
 	 * @param PeerId input of the userId:channel in string
 	 */
 	static TTuple<FString, int32> ExtractPeerAndChannel(const FString &PeerId);
+
+	/*
+	 * @brief Generate peer:channel string from peer id and channel
+	 *
+	 * @param PeerId The peer id in string (peer userid)
+	 * @param Channel The channel in integer
+	 */
+	static FString GeneratePeerChannelString(const FString& PeerId, int32 Channel);
 };

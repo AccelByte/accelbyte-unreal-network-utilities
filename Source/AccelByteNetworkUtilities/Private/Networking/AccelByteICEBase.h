@@ -52,6 +52,13 @@ public:
 	*/
 	DECLARE_DELEGATE_FourParams(OnICEDataReady, const FString&, int32, const uint8*, int32);
 
+	/**
+	* @brief Delegate when ICE data channel is lost and need reconnection
+	*
+	* @param The remote peer id that lost the connection
+	*/
+	DECLARE_DELEGATE_OneParam(OnICEConnectionLost, const FString&);
+
 	AccelByteICEBase()
 	{
 	}
@@ -131,6 +138,11 @@ public:
 		OnICEDataReadyDelegate = Delegate;
 	}
 
+	void SetOnICEConnectionLostDelegate(const OnICEConnectionLost& Delegate)
+	{
+		OnICEConnectionLostDelegate = Delegate;
+	}
+
 	/**
 	* @brief Set AccelByteSignalingBase instance
 	*
@@ -158,6 +170,20 @@ public:
 	 */
 	virtual bool IsPeerReady() const = 0;
 
+	/**
+	 * Schedule reconnection to host in the future, this is to make sure libjuice agent in host already closed before
+	 * initiating new connection.
+	 *
+	 * @param TurnServerCredential Turn server credential tobe used in reconnection
+	 * @param InNextSeconds the reconnection will start after this seconds from the time peer inactive timeout
+	 */
+	virtual void ScheduleReconnection(const FAccelByteModelsTurnServerCredential& TurnServerCredential, float InNextSeconds = 1) = 0;
+
+	/**
+	 * [FOR GAUNTLET TEST ONLY] simulate network switching.
+	 */
+	virtual void SimulateNetworkSwitching() = 0;
+
 protected:
 	/*
 	 * Handle all signaling message for exchange information about ICE candidates, ICE description
@@ -183,6 +209,7 @@ protected:
 	OnICEDataChannelConnectionError OnICEDataChannelConnectionErrorDelegate;
 	OnICEDataChannelClosed OnICEDataChannelClosedDelegate;
 	OnICEDataReady OnICEDataReadyDelegate;
+	OnICEConnectionLost OnICEConnectionLostDelegate;
 };
 
 /*
@@ -224,5 +251,13 @@ public:
 	virtual bool IsPeerReady() const override
 	{
 		return true;
+	}
+
+	virtual void ScheduleReconnection(const FAccelByteModelsTurnServerCredential& TurnServerCredential, float InNextSeconds = 1) override
+	{
+	}
+
+	virtual void SimulateNetworkSwitching() override
+	{
 	}
 };

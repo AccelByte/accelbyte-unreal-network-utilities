@@ -128,6 +128,18 @@ public:
 
 	void ScheduleClose(const FString &PeerChannel);
 
+	/**
+	 * [FOR GAUNTLET TEST ONLY] simulate network switching
+	 */
+	void SimulateNetworkSwitching();
+
+	/**
+	 * @brief [FOR GAUNTLET TEST ONLY] Check if all of the peer is connected or not.
+	 *
+	 * @return true if all peers are connected and false if peer not exist or one of the peer disconnected.
+	 */
+	bool IsPeerConnected();
+
 	OnWebRTCDataChannelConnected OnWebRTCDataChannelConnectedDelegate;
 	OnWebRTCRequestConnectFinished OnWebRTCRequestConnectFinishedDelegate;
 	OnWebRTCDataChannelClosed OnWebRTCDataChannelClosedDelegate;
@@ -190,6 +202,9 @@ private:
 
 	// connection idle timeout in seconds
 	int32 ConnectionIdleTimeout = 60;
+
+	//
+	bool bIsUseTurnManager = false;
 
 	/**
 	 * @brief Request connect with selected turn server
@@ -267,6 +282,13 @@ private:
 	 * @param Status status of the connection
 	 */
 	void OnICEConnectionErrorCallback(const FString &PeerId, const AccelByte::NetworkUtilities::EAccelByteP2PConnectionStatus &Status);
+
+	/**
+	 * @brief Callback when connection to host lost. Only applicable from client.
+	 *
+	 * @param PeerChannel Peer Id and channel with following format peer-id:channel
+	 */
+	void OnICEConnectionLostCallback(const FString& PeerChannel);
 
 	/**
 	 * @brief Send info about P2P connection type and selected turn server region to BE

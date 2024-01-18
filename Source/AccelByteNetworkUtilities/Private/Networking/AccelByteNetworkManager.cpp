@@ -55,9 +55,7 @@ bool AccelByteNetworkManager::RequestConnect(const FString& PeerChannel)
 		RequestConnectWithTurnServer(PeerChannel, CachedTurnServer);
 		return true;
 	}
-	
-	bool bIsUseTurnManager = false;
-	GConfig->GetBool(TEXT("AccelByteNetworkUtilities"), TEXT("UseTurnManager"), bIsUseTurnManager, GEngineIni);
+
 	if(bIsUseTurnManager)
 	{
 		ApiClientPtr->TurnManager.GetClosestTurnServer(THandler<FAccelByteModelsTurnServer>::CreateLambda(
@@ -115,6 +113,7 @@ void AccelByteNetworkManager::Setup(AccelByte::FApiClientPtr InApiClientPtr)
 
 	GConfig->GetInt(TEXT("AccelByteNetworkUtilities"), TEXT("RequestConnectTimeout"), RequestConnectTimeout, GEngineIni);
 	GConfig->GetInt(TEXT("AccelByteNetworkUtilities"), TEXT("ConnectionIdleTimeout"), ConnectionIdleTimeout, GEngineIni);
+	GConfig->GetBool(TEXT("AccelByteNetworkUtilities"), TEXT("UseTurnManager"), bIsUseTurnManager, GEngineIni);
 
 	// setup tick
 	FTickerDelegate TickerDelegate = FTickerDelegate::CreateRaw(this, &AccelByteNetworkManager::Tick);
@@ -364,6 +363,7 @@ TSharedPtr<AccelByteICEBase> AccelByteNetworkManager::CreateNewConnection(const 
 	Rtc->SetOnICEDataChannelClosedDelegate(AccelByteICEBase::OnICEDataChannelClosed::CreateRaw(this, &AccelByteNetworkManager::RTCClosed));
 	Rtc->SetOnICEDataReadyDelegate(AccelByteICEBase::OnICEDataReady::CreateRaw(this, &AccelByteNetworkManager::IncomingData));
 	Rtc->SetOnICEDataChannelConnectionErrorDelegate(AccelByteICEBase::OnICEDataChannelConnectionError::CreateRaw(this, &AccelByteNetworkManager::OnICEConnectionErrorCallback));
+	Rtc->SetOnICEConnectionLostDelegate(AccelByteICEBase::OnICEConnectionLost::CreateRaw(this, &AccelByteNetworkManager::OnICEConnectionLostCallback));
 	{
 		FScopeLock ScopeLock(&LockObject);
 		PeerRequestConnectTime.Add(PeerChannel, FDateTime::Now());
@@ -488,6 +488,44 @@ void AccelByteNetworkManager::OnICEConnectionErrorCallback(const FString& PeerId
 	}
 }
 
+void AccelByteNetworkManager::OnICEConnectionLostCallback(const FString& PeerChannel)
+{
+	UE_LOG_ABNET(Log, TEXT("Connection to %s lost, attempting to reconnect"), *PeerChannel);
+	
+	if (!PeerIdToICEConnectionMap.Contains(PeerChannel))
+	{
+		return;
+	}
+
+	const TSharedPtr<AccelByteICEBase> Connection = PeerIdToICEConnectionMap[PeerChannel];
+
+	if (!bIsUseTurnManager)
+	{
+		Connection->ScheduleReconnection(FAccelByteModelsTurnServerCredential());
+		return;
+	}
+
+	ApiClientPtr->TurnManager.GetClosestTurnServer(
+		THandler<FAccelByteModelsTurnServer>::CreateLambda([this, Connection, PeerChannel](const FAccelByteModelsTurnServer &Result)
+		{
+			ApiClientPtr->TurnManager.GetTurnCredential(Result.Region, Result.Ip, Result.Port,
+				THandler<FAccelByteModelsTurnServerCredential>::CreateLambda([this, Connection](const FAccelByteModelsTurnServerCredential &Credential)
+				{
+					Connection->ScheduleReconnection(Credential);
+				}),
+				FErrorHandler::CreateLambda([this, PeerChannel](int32 Code, const FString &ErrorMessage)
+				{
+					UE_LOG_ABNET(Error, TEXT("Error getting turn server credential when executing reconnection: %s"), *ErrorMessage);
+					ClosePeerConnection(PeerChannel);
+				}));
+		}),
+		FErrorHandler::CreateLambda([this, PeerChannel](int32, const FString &ErrorMessage)
+		{
+			UE_LOG_ABNET(Error, TEXT("Error getting turn server from turn manager when executing reconnection: %s"), *ErrorMessage);
+			ClosePeerConnection(PeerChannel);
+		}));
+}
+
 void AccelByteNetworkManager::SendMetricData(const EP2PConnectionType& P2PConnectionType)
 {
 	// Host doesn't know turn server region, SendMetricData only get called from client
@@ -530,4 +568,32 @@ void AccelByteNetworkManager::ScheduleClose(const FString &PeerChannel)
 		return;
 	}
 	ScheduledCloseMap.Add(PeerChannel, FDateTime::Now());
+}
+
+void AccelByteNetworkManager::SimulateNetworkSwitching()
+{
+	for (const auto& Connection : PeerIdToICEConnectionMap)
+	{
+		Connection.Value->SimulateNetworkSwitching();
+	}
+}
+
+bool AccelByteNetworkManager::IsPeerConnected()
+{
+	if (PeerIdToICEConnectionMap.Num() <= 0)
+	{
+		return false;
+	}
+
+	for (const auto& Connection : PeerIdToICEConnectionMap)
+	{
+		if(Connection.Value->IsConnected())
+		{
+			continue;
+		}
+
+		return false;
+	}
+
+	return true;
 }

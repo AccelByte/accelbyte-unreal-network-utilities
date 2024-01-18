@@ -19,6 +19,7 @@
 #include "Misc/ConfigCacheIni.h"
 #include "Core/AccelByteDefines.h"
 #include "AccelByteSignalingConstants.h"
+#include "AccelByteNetworkUtilities.h"
 
 using namespace AccelByte::NetworkUtilities;
 
@@ -54,6 +55,16 @@ AccelByteJuice::AccelByteJuice(const FString& PeerId): AccelByteICEBase(PeerId)
 	if (!GConfig->GetInt(TEXT("AccelByteNetworkUtilities"), TEXT("HostCheckTimeout"), HostCheckTimeout, GEngineIni))
 	{
 		UE_LOG_ABNET(Log, TEXT("Using default HostCheckTimeout (%d seconds) because its missing from DefaultEngine.ini"), HostCheckTimeout);
+	}
+
+	if (!GConfig->GetDouble(TEXT("AccelByteNetworkUtilities"), TEXT("PeerInactiveTimeoutInSeconds"), PeerInactiveTimeoutInSeconds, GEngineIni))
+	{
+		UE_LOG_ABNET(Log, TEXT("Using default PeerInactiveTimeoutInSeconds (%d seconds) because its missing from DefaultEngine.ini"), PeerInactiveTimeoutInSeconds);
+	}
+
+	if (!GConfig->GetFloat(TEXT("AccelByteNetworkUtilities"), TEXT("PeerLastActivityTickerIntervalInSeconds"), PeerLastActivityTickerIntervalInSeconds, GEngineIni))
+	{
+		UE_LOG_ABNET(Log, TEXT("Using default PeerInactiveTimeoutInSeconds (%d seconds) because its missing from DefaultEngine.ini"), PeerLastActivityTickerIntervalInSeconds);
 	}
 }
 
@@ -344,6 +355,8 @@ void AccelByteJuice::JuiceStateChanged(juice_state_t State)
 	UE_LOG_ABNET(Log, TEXT("Juice state changed : %d"), State);
 	if(State == JUICE_STATE_CONNECTED)
 	{
+		UpdatePeerLastActivity();
+		StartPeerLastActivityWatcher();
 		bIsConnected = true;
 #ifndef PLATFORM_SWITCH
 		char localAddress[MAX_ADDRESS_LENGTH];
@@ -356,15 +369,18 @@ void AccelByteJuice::JuiceStateChanged(juice_state_t State)
 		UE_LOG_ABNET(Log, TEXT("selected candidate: %d; local : %hs; remote: %hs"), result, localCandidate, remoteCandidate);
 #endif
 
-#if PLATFORM_MAC
-		// mac issue, need to be called from game thread
-		AsyncTask(ENamedThreads::GameThread, [this]()
+		if (!bReconnection)
 		{
+#if PLATFORM_MAC
+			// mac issue, need to be called from game thread
+			AsyncTask(ENamedThreads::GameThread, [this]()
+			{
+				OnICEDataChannelConnectedDelegate.ExecuteIfBound(PeerChannel, GetP2PConnectionType());
+			});
+#else
 			OnICEDataChannelConnectedDelegate.ExecuteIfBound(PeerChannel, GetP2PConnectionType());
-		});
-#else		
-		OnICEDataChannelConnectedDelegate.ExecuteIfBound(PeerChannel, GetP2PConnectionType());
 #endif
+		}
 	}
 	else if(State == JUICE_STATE_FAILED)
 	{
@@ -410,6 +426,7 @@ void AccelByteJuice::JuiceDataRecv(const char* data, size_t size)
 {
 	check(!PeerId.IsEmpty());
 	OnICEDataReadyDelegate.ExecuteIfBound(PeerId, Channel, (uint8*)data, size);
+	UpdatePeerLastActivity();
 }
 
 EP2PConnectionType AccelByteJuice::GetP2PConnectionType() const
@@ -496,6 +513,80 @@ bool AccelByteJuice::Tick(float DeltaTime)
 void AccelByteJuice::UpdatePeerStatus(bool InStatus)
 {
 	PeerStatus = InStatus ? EAccelBytePeerStatus::Hosting : EAccelBytePeerStatus::NotHosting;
+}
+
+bool AccelByteJuice::ReconnectOnNextTick(float DeltaTime)
+{
+	UE_LOG_ABNET(Log, TEXT("Trying to reconnect to the host..."));
+	RequestConnect(SelectedTurnServerCred.Ip, SelectedTurnServerCred.Port, SelectedTurnServerCred.Username, SelectedTurnServerCred.Password);
+	return false;
+}
+
+bool AccelByteJuice::PeerLastActivityTick(float DeltaTime)
+{
+	if (JuiceAgent == nullptr)
+	{
+		return false;
+	}
+
+	if (FPlatformTime::Seconds() - LastPeerActivityTime > PeerInactiveTimeoutInSeconds)
+	{
+		UE_LOG_ABNET(Log, TEXT("Peer is not responding after %f seconds, will close the connection"), PeerInactiveTimeoutInSeconds);
+		ClosePeerConnection();
+
+		bSimulateNetworkSwitchingEnabled = false;
+
+		// Only client re-initiate connection, in the host side it only need to close its connection and wait for client to send offer
+		if (bIsInitiator)
+		{
+			// Invoke connection lost so network manager can request new turn server credentials for next reconnection
+			OnICEConnectionLostDelegate.ExecuteIfBound(FAccelByteNetworkUtilitiesModule::GeneratePeerChannelString(PeerId, Channel));
+		}
+		return false;
+	}
+
+	return true;
+}
+
+void AccelByteJuice::StartPeerLastActivityWatcher()
+{
+	PeerLastActivityTickerDelegate = FTickerDelegate::CreateRaw(this, &AccelByteJuice::PeerLastActivityTick);
+	PeerLastActivityTickerDelegateHandle = FTickerAlias::GetCoreTicker().AddTicker(PeerLastActivityTickerDelegate, PeerLastActivityTickerIntervalInSeconds);
+}
+
+void AccelByteJuice::UpdatePeerLastActivity()
+{
+	if (bSimulateNetworkSwitchingEnabled)
+	{
+		return;
+	}
+
+	LastPeerActivityTime = FPlatformTime::Seconds();
+}
+
+void AccelByteJuice::ScheduleReconnection(const FAccelByteModelsTurnServerCredential& TurnServerCredential, const float InNextSeconds)
+{
+	if (TurnServerCredential.Ip.IsEmpty() ||
+		TurnServerCredential.Port <= 0 ||
+		TurnServerCredential.Username.IsEmpty() ||
+		TurnServerCredential.Password.IsEmpty())
+	{
+		UE_LOG_ABNET(Warning, TEXT("Reconnecting using previous turn server credential"));
+	}
+	else
+	{
+		SelectedTurnServerCred = TurnServerCredential;
+	}
+
+	bReconnection = true;
+
+	const FTickerDelegate TickerDelegate =  FTickerDelegate::CreateRaw(this, &AccelByteJuice::ReconnectOnNextTick);
+	FTickerAlias::GetCoreTicker().AddTicker(TickerDelegate, InNextSeconds);
+}
+
+void AccelByteJuice::SimulateNetworkSwitching()
+{
+	bSimulateNetworkSwitchingEnabled = true;
 }
 
 #endif
