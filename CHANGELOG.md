@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [4.3.1](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/4.3.1%0D4.3.0) (2024-03-08)
+
+
+### Bug Fixes
+
+* linker error in UE4.27 linux ([d608f5c](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/d608f5c0beab6f1388eed9306ba725df99f53893))
+* remove all tickers in AccelByteJuice in destructor to avoid crash ([2b37886](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/2b37886b92795031823886c50ee5c085cc9e8864))
+
 ## [4.3.0](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/4.3.0%0D4.2.7) (2024-01-18)
 
 

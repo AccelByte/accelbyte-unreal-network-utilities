@@ -152,7 +152,7 @@ private:
 	TSharedPtr<AccelByteSignalingBase> Signaling;
 
 	//Store all ICE connection by its peer id
-	TMap<FString, TSharedPtr<AccelByteICEBase>> PeerIdToICEConnectionMap;
+	TMap<FString, TSharedPtr<AccelByteICEBase, ESPMode::ThreadSafe>> PeerIdToICEConnectionMap;
 
 	//store the first time peer want to connect
 	TMap<FString, FDateTime> PeerRequestConnectTime;
@@ -256,9 +256,9 @@ private:
 	/**
 	* @brief CreateNewConnection create a AccelByteICEBase connection instance to the destination
 	*
-	* @param PeerId of the remote connection
+	* @param PeerChannel of the remote connection
 	*/
-	TSharedPtr<AccelByteICEBase> CreateNewConnection(const FString& PeerChannel);
+	TSharedPtr<AccelByteICEBase, ESPMode::ThreadSafe> CreateNewConnection(const FString& PeerChannel);
 
 	/**
 	 * @brief Ticker for check if connection failed within some seconds

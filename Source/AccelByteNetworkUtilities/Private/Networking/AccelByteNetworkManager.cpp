@@ -77,7 +77,8 @@ bool AccelByteNetworkManager::RequestConnect(const FString& PeerChannel)
 		FString TurnUserName;
 		FString TurnPassword;
 		FString TurnError;
-		if(!GConfig->GetString(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerUrl"), TurnHost, GEngineIni))
+		if( !GConfig->GetString(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerHost"), TurnHost, GEngineIni)
+			&& !GConfig->GetString(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerUrl"), TurnHost, GEngineIni))
 		{
 			UE_LOG_ABNET(Error, TEXT("TurnServerUrl was missing in DefaultEngine.ini"));
 		}
@@ -90,7 +91,7 @@ bool AccelByteNetworkManager::RequestConnect(const FString& PeerChannel)
 		// Username password possible empty if no authentication required on TURN server
 		GConfig->GetString(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerUsername"), TurnUserName, GEngineIni);
 		GConfig->GetString(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerPassword"), TurnPassword, GEngineIni);
-		TSharedPtr<AccelByteICEBase> Rtc = CreateNewConnection(PeerChannel);
+		TSharedPtr<AccelByteICEBase, ESPMode::ThreadSafe> Rtc = CreateNewConnection(PeerChannel);
 		PeerIdToICEConnectionMap.Add(PeerChannel, Rtc);
 		Rtc->RequestConnect(TurnHost, TurnPort, TurnUserName, TurnPassword);
 	}
@@ -126,7 +127,7 @@ bool AccelByteNetworkManager::SendTo(const uint8* Data, int32 Count, int32& Byte
 	{
 		return false;
 	}
-	TSharedPtr<AccelByteICEBase> Rtc = PeerIdToICEConnectionMap[PeerChannel];
+	TSharedPtr<AccelByteICEBase, ESPMode::ThreadSafe> Rtc = PeerIdToICEConnectionMap[PeerChannel];
 	return Rtc->Send(Data, Count, BytesSent);
 }
 
@@ -215,7 +216,7 @@ void AccelByteNetworkManager::ClosePeerConnection(const FString& PeerId)
 
 void AccelByteNetworkManager::CloseAllPeerConnections()
 {
-	TArray<TSharedPtr<AccelByteICEBase>> ToDestroy;
+	TArray<TSharedPtr<AccelByteICEBase, ESPMode::ThreadSafe>> ToDestroy;
 	for (const auto& pair : PeerIdToICEConnectionMap)
 	{
 		ToDestroy.Add(pair.Value);
@@ -269,7 +270,7 @@ void AccelByteNetworkManager::RequestConnectWithTurnServer(const FString& PeerCh
 		FSHA1::HMACBuffer(TCHAR_TO_ANSI(*TurnSecret), TurnSecret.Len(), TCHAR_TO_ANSI(*Username), Username.Len(), DataOut);
 		FString Password = FBase64::Encode(DataOut, 20);
 
-		TSharedPtr<AccelByteICEBase> Rtc = CreateNewConnection(PeerChannel);
+		TSharedPtr<AccelByteICEBase, ESPMode::ThreadSafe> Rtc = CreateNewConnection(PeerChannel);
 		PeerIdToICEConnectionMap.Add(PeerChannel, Rtc);
 		Rtc->RequestConnect(TurnServer.Ip, TurnServer.Port, Username, Password);
 	} else
@@ -305,7 +306,7 @@ void AccelByteNetworkManager::OnSignalingMessage(const FString& PeerId, const FS
 		return;
 	}
 	
-	TSharedPtr<AccelByteICEBase> Conn;
+	TSharedPtr<AccelByteICEBase, ESPMode::ThreadSafe> Conn;
 	if (!PeerIdToICEConnectionMap.Contains(PeerChannel))
 	{
 		Conn = CreateNewConnection(PeerChannel);
@@ -351,12 +352,12 @@ void AccelByteNetworkManager::RTCClosed(const FString& PeerChannel)
 	}
 }
 
-TSharedPtr<AccelByteICEBase> AccelByteNetworkManager::CreateNewConnection(const FString& PeerChannel)
+TSharedPtr<AccelByteICEBase, ESPMode::ThreadSafe> AccelByteNetworkManager::CreateNewConnection(const FString& PeerChannel)
 {
 #ifdef LIBJUICE
-	TSharedPtr<AccelByteICEBase> Rtc = MakeShared<AccelByteJuice>(PeerChannel);
+	TSharedPtr<AccelByteICEBase, ESPMode::ThreadSafe> Rtc = MakeShared<AccelByteJuice, ESPMode::ThreadSafe>(PeerChannel);
 #else
-	TSharedPtr<AccelByteICEBase> Rtc = MakeShared<AccelByteNullICEConnection>(PeerChannel);
+	TSharedPtr<AccelByteICEBase, ESPMode::ThreadSafe> Rtc = MakeShared<AccelByteNullICEConnection>(PeerChannel);
 #endif
 	Rtc->SetSignaling(Signaling.Get());
 	Rtc->SetOnICEDataChannelConnectedDelegate(AccelByteICEBase::OnICEDataChannelConnected::CreateRaw(this, &AccelByteNetworkManager::RTCConnected));
@@ -457,7 +458,7 @@ void AccelByteNetworkManager::RequestCredentialAndConnect(const FString& PeerId,
 	ApiClientPtr->TurnManager.GetTurnCredential(SelectedTurnServer.Region, SelectedTurnServer.Ip, SelectedTurnServer.Port,
 		THandler<FAccelByteModelsTurnServerCredential>::CreateLambda([this, PeerId](const FAccelByteModelsTurnServerCredential &Credential)
 		{
-			TSharedPtr<AccelByteICEBase> Rtc = CreateNewConnection(PeerId);
+			TSharedPtr<AccelByteICEBase, ESPMode::ThreadSafe> Rtc = CreateNewConnection(PeerId);
 			PeerIdToICEConnectionMap.Add(PeerId, Rtc);
 			FString Password = Credential.Password;
 			FString ParamValue;
@@ -497,7 +498,7 @@ void AccelByteNetworkManager::OnICEConnectionLostCallback(const FString& PeerCha
 		return;
 	}
 
-	const TSharedPtr<AccelByteICEBase> Connection = PeerIdToICEConnectionMap[PeerChannel];
+	const TSharedPtr<AccelByteICEBase, ESPMode::ThreadSafe> Connection = PeerIdToICEConnectionMap[PeerChannel];
 
 	if (!bIsUseTurnManager)
 	{
@@ -568,6 +569,7 @@ void AccelByteNetworkManager::ScheduleClose(const FString &PeerChannel)
 		return;
 	}
 	ScheduledCloseMap.Add(PeerChannel, FDateTime::Now());
+	UE_LOG_ABNET(Log, TEXT("Peer %s is scheduled to close"), *PeerChannel);
 }
 
 void AccelByteNetworkManager::SimulateNetworkSwitching()

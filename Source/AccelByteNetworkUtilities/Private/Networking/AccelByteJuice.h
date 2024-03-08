@@ -33,10 +33,11 @@ struct TurnConfigHelper
  * AccelByteJuice implement AccelByteICEBase using third party library LibJuice for ICE connection
  */
 
-class AccelByteJuice: public AccelByteICEBase
+class AccelByteJuice : public AccelByteICEBase, public TSharedFromThis<AccelByteJuice, ESPMode::ThreadSafe>
 {
 public:
 	AccelByteJuice(const FString &PeerId);
+	virtual ~AccelByteJuice() override;
 
 	/**
 	* @brief Process signaling message
@@ -149,6 +150,10 @@ private:
 	*/
 	bool bReconnection = false;
 
+	// Ping payload
+	static constexpr int32 PingDataLength = 1;
+	static constexpr uint8 PingData[PingDataLength] = { 32 };
+
 	// This time indicate the last time this agent received a data from its peer
 	TAtomic<double> LastPeerActivityTime{0};
 
@@ -158,9 +163,17 @@ private:
 	// Maximum peer inactive time, counted from the last time the agent received data.
 	double PeerInactiveTimeoutInSeconds = 10.0;
 
+	// Host initial check delegate and delegate handle
+	FTickerDelegate HostInitialCheckDelegate;
+	FDelegateHandleAlias HostInitialCheckDelegateHandle;
+
 	// Peer last activity delegate and delegate handle
 	FTickerDelegate PeerLastActivityTickerDelegate;
 	FDelegateHandleAlias PeerLastActivityTickerDelegateHandle;
+
+	// Schedule reconnection delegate and delegate handle
+	FTickerDelegate ScheduleReconnectionDelegate;
+	FDelegateHandleAlias ScheduleReconnectionDelegateHandle;
 
 	bool bSimulateNetworkSwitchingEnabled = false; 
 
@@ -201,7 +214,7 @@ private:
 	 *
 	 * @param DeltaTime of the loop
 	 */
-	bool Tick(float DeltaTime);
+	bool HostInitialCheckTick(float DeltaTime);
 
 	/**
 	 * @brief Update peer status based on message received from signaling
@@ -238,6 +251,8 @@ private:
 	 * The interval is set by PeerLastActivityTickerIntervalInSeconds
 	 */
 	void StartPeerLastActivityWatcher();
+
+	static bool IsPingData(const char* InData, size_t InSize);
 };
 
 #endif

@@ -26,6 +26,11 @@ using namespace AccelByte::NetworkUtilities;
 #define DO_TASK(task) FFunctionGraphTask::CreateAndDispatchWhenReady(task, TStatId(), nullptr);
 #define MAX_ADDRESS_LENGTH 256
 
+#if ENGINE_MAJOR_VERSION < 5
+constexpr int32 AccelByteJuice::PingDataLength;
+constexpr uint8 AccelByteJuice::PingData[PingDataLength];
+#endif
+
 /**
  * Registered to LibJuice Log
  */
@@ -52,20 +57,28 @@ AccelByteJuice::AccelByteJuice(const FString& PeerId): AccelByteICEBase(PeerId)
 		juice_set_log_level(JUICE_LOG_LEVEL_NONE);
 	}
 
-	if (!GConfig->GetInt(TEXT("AccelByteNetworkUtilities"), TEXT("HostCheckTimeout"), HostCheckTimeout, GEngineIni))
+	if (!GConfig->GetInt(TEXT("AccelByteNetworkUtilities"), TEXT("HostCheckTimeoutInSeconds"), HostCheckTimeout, GEngineIni)
+		&& !GConfig->GetInt(TEXT("AccelByteNetworkUtilities"), TEXT("HostCheckTimeout"), HostCheckTimeout, GEngineIni))
 	{
 		UE_LOG_ABNET(Log, TEXT("Using default HostCheckTimeout (%d seconds) because its missing from DefaultEngine.ini"), HostCheckTimeout);
 	}
 
 	if (!GConfig->GetDouble(TEXT("AccelByteNetworkUtilities"), TEXT("PeerInactiveTimeoutInSeconds"), PeerInactiveTimeoutInSeconds, GEngineIni))
 	{
-		UE_LOG_ABNET(Log, TEXT("Using default PeerInactiveTimeoutInSeconds (%d seconds) because its missing from DefaultEngine.ini"), PeerInactiveTimeoutInSeconds);
+		UE_LOG_ABNET(Log, TEXT("Using default PeerInactiveTimeoutInSeconds (%f seconds) because its missing from DefaultEngine.ini"), PeerInactiveTimeoutInSeconds);
 	}
 
 	if (!GConfig->GetFloat(TEXT("AccelByteNetworkUtilities"), TEXT("PeerLastActivityTickerIntervalInSeconds"), PeerLastActivityTickerIntervalInSeconds, GEngineIni))
 	{
-		UE_LOG_ABNET(Log, TEXT("Using default PeerInactiveTimeoutInSeconds (%d seconds) because its missing from DefaultEngine.ini"), PeerLastActivityTickerIntervalInSeconds);
+		UE_LOG_ABNET(Log, TEXT("Using default PeerLastActivityTickerIntervalInSeconds (%f seconds) because its missing from DefaultEngine.ini"), PeerLastActivityTickerIntervalInSeconds);
 	}
+}
+
+AccelByteJuice::~AccelByteJuice()
+{
+	FTickerAlias::GetCoreTicker().RemoveTicker(HostInitialCheckDelegateHandle);
+	FTickerAlias::GetCoreTicker().RemoveTicker(PeerLastActivityTickerDelegateHandle);
+	FTickerAlias::GetCoreTicker().RemoveTicker(ScheduleReconnectionDelegateHandle);
 }
 
 void AccelByteJuice::OnSignalingMessage(const FAccelByteSignalingMessage &Message)
@@ -97,8 +110,8 @@ bool AccelByteJuice::RequestConnect(const FString &ServerUrl, int ServerPort, co
 	Signaling->SendMessage(PeerId, SignalingMessage);
 	PeerStatus = EAccelBytePeerStatus::WaitingReply;
 
-	const FTickerDelegate TickerDelegate = FTickerDelegate::CreateRaw(this, &AccelByteJuice::Tick);
-	FTickerAlias::GetCoreTicker().AddTicker(TickerDelegate, 0.5);
+	HostInitialCheckDelegate = FTickerDelegate::CreateThreadSafeSP(this, &AccelByteJuice::HostInitialCheckTick);
+	HostInitialCheckDelegateHandle = FTickerAlias::GetCoreTicker().AddTicker(HostInitialCheckDelegate, 0.5);
 
 	return true;
 }
@@ -121,7 +134,7 @@ bool AccelByteJuice::Send(const uint8* Data, int32 Count, int32& BytesSent)
 
 void AccelByteJuice::ClosePeerConnection()
 {
-	UE_LOG_ABNET(Log, TEXT("Closing peer connection : %s"), *PeerId);
+	UE_LOG_ABNET(Log, TEXT("Closing peer connection to: %s"), *PeerChannel);
 	bIsConnected = false;
 	DescriptionReadyMutex.Lock();
 	bIsDescriptionReady = false;
@@ -422,10 +435,32 @@ void AccelByteJuice::JuiceGatheringDone()
 	Signaling->SendMessage(PeerId, Message);
 }
 
+bool AccelByteJuice::IsPingData(const char* InData, const size_t InSize)
+{
+	if (InSize != PingDataLength)
+	{
+		return false;
+	}
+
+	for (size_t i = 0; i < PingDataLength; i++)
+	{
+		if(PingData[i] != InData[i])
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
 void AccelByteJuice::JuiceDataRecv(const char* data, size_t size)
 {
 	check(!PeerId.IsEmpty());
-	OnICEDataReadyDelegate.ExecuteIfBound(PeerId, Channel, (uint8*)data, size);
+
+	if(!IsPingData(data, size))
+	{
+		OnICEDataReadyDelegate.ExecuteIfBound(PeerId, Channel, (uint8*)data, size);
+	}
 	UpdatePeerLastActivity();
 }
 
@@ -462,7 +497,7 @@ EP2PConnectionType AccelByteJuice::GetP2PConnectionType() const
 	return SelectedCandidateType;
 }
 
-bool AccelByteJuice::Tick(float DeltaTime)
+bool AccelByteJuice::HostInitialCheckTick(float DeltaTime)
 {
 	if (bIsCheckingHost)
 	{
@@ -529,9 +564,12 @@ bool AccelByteJuice::PeerLastActivityTick(float DeltaTime)
 		return false;
 	}
 
+	int32 BytesSent{0};
+	Send(PingData, PingDataLength, BytesSent);
+
 	if (FPlatformTime::Seconds() - LastPeerActivityTime > PeerInactiveTimeoutInSeconds)
 	{
-		UE_LOG_ABNET(Log, TEXT("Peer is not responding after %f seconds, will close the connection"), PeerInactiveTimeoutInSeconds);
+		UE_LOG_ABNET(Log, TEXT("Peer %s is not responding after %f seconds, will close the connection"), *PeerChannel, PeerInactiveTimeoutInSeconds);
 		ClosePeerConnection();
 
 		bSimulateNetworkSwitchingEnabled = false;
@@ -550,7 +588,7 @@ bool AccelByteJuice::PeerLastActivityTick(float DeltaTime)
 
 void AccelByteJuice::StartPeerLastActivityWatcher()
 {
-	PeerLastActivityTickerDelegate = FTickerDelegate::CreateRaw(this, &AccelByteJuice::PeerLastActivityTick);
+	PeerLastActivityTickerDelegate = FTickerDelegate::CreateThreadSafeSP(this, &AccelByteJuice::PeerLastActivityTick);
 	PeerLastActivityTickerDelegateHandle = FTickerAlias::GetCoreTicker().AddTicker(PeerLastActivityTickerDelegate, PeerLastActivityTickerIntervalInSeconds);
 }
 
@@ -580,8 +618,8 @@ void AccelByteJuice::ScheduleReconnection(const FAccelByteModelsTurnServerCreden
 
 	bReconnection = true;
 
-	const FTickerDelegate TickerDelegate =  FTickerDelegate::CreateRaw(this, &AccelByteJuice::ReconnectOnNextTick);
-	FTickerAlias::GetCoreTicker().AddTicker(TickerDelegate, InNextSeconds);
+	ScheduleReconnectionDelegate =  FTickerDelegate::CreateThreadSafeSP(this, &AccelByteJuice::ReconnectOnNextTick);
+	ScheduleReconnectionDelegateHandle = FTickerAlias::GetCoreTicker().AddTicker(ScheduleReconnectionDelegate, InNextSeconds);
 }
 
 void AccelByteJuice::SimulateNetworkSwitching()
