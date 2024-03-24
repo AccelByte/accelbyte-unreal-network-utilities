@@ -7,6 +7,7 @@
 #include "SocketAccelByte.h"
 #include "Misc/ConfigCacheIni.h"
 #include "AccelByteNetworkUtilitiesConstant.h"
+#include "Core/AccelByteUtilities.h"
 
 static FSocketSubsystemAccelByte* SocketSubsystemAccelByteInstance = nullptr;
 
@@ -20,8 +21,8 @@ FSocketSubsystemAccelByte* FSocketSubsystemAccelByte::Create()
 }
 
 bool FSocketSubsystemAccelByte::Init(FString& Error)
-{	
-	GConfig->GetBool(TEXT("AccelByteNetworkUtilities"), TEXT("bRequiresEncryptPackets"), bRequiresEncryptPackets, GEngineIni);
+{
+	FAccelByteUtilities::LoadABConfigFallback(TEXT("AccelByteNetworkUtilities"), TEXT("bRequiresEncryptPackets"), bRequiresEncryptPackets);
 	return true;
 }
 

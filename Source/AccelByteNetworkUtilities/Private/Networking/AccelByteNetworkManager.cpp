@@ -77,20 +77,20 @@ bool AccelByteNetworkManager::RequestConnect(const FString& PeerChannel)
 		FString TurnUserName;
 		FString TurnPassword;
 		FString TurnError;
-		if( !GConfig->GetString(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerHost"), TurnHost, GEngineIni)
-			&& !GConfig->GetString(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerUrl"), TurnHost, GEngineIni))
+		if( !FAccelByteUtilities::LoadABConfigFallback(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerHost"), TurnHost)
+			&& !FAccelByteUtilities::LoadABConfigFallback(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerUrl"), TurnHost))
 		{
-			UE_LOG_ABNET(Error, TEXT("TurnServerUrl was missing in DefaultEngine.ini"));
+			UE_LOG_ABNET(Error, TEXT("TurnServerUrl was missing in DefaultEngine.ini or in the Command Line Arguments"));
 		}
-
-		if(!GConfig->GetInt(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerPort"), TurnPort, GEngineIni))
+		
+		if(!FAccelByteUtilities::LoadABConfigFallback(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerPort"), TurnPort))
 		{
-			UE_LOG_ABNET(Error, TEXT("TurnServerPort was missing in DefaultEngine.ini"));
+			UE_LOG_ABNET(Error, TEXT("TurnServerPort was missing in DefaultEngine.ini or in the Command Line Arguments"));
 		}
 
 		// Username password possible empty if no authentication required on TURN server
-		GConfig->GetString(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerUsername"), TurnUserName, GEngineIni);
-		GConfig->GetString(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerPassword"), TurnPassword, GEngineIni);
+		FAccelByteUtilities::LoadABConfigFallback(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerUsername"), TurnUserName);
+		FAccelByteUtilities::LoadABConfigFallback(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerPassword"), TurnPassword);
 		TSharedPtr<AccelByteICEBase, ESPMode::ThreadSafe> Rtc = CreateNewConnection(PeerChannel);
 		PeerIdToICEConnectionMap.Add(PeerChannel, Rtc);
 		Rtc->RequestConnect(TurnHost, TurnPort, TurnUserName, TurnPassword);
@@ -112,9 +112,9 @@ void AccelByteNetworkManager::Setup(AccelByte::FApiClientPtr InApiClientPtr)
 
 	Signaling->SetOnWebRTCSignalingMessage(AccelByteSignalingBase::OnWebRTCSignalingMessage::CreateRaw(this, &AccelByteNetworkManager::OnSignalingMessage));
 
-	GConfig->GetInt(TEXT("AccelByteNetworkUtilities"), TEXT("RequestConnectTimeout"), RequestConnectTimeout, GEngineIni);
-	GConfig->GetInt(TEXT("AccelByteNetworkUtilities"), TEXT("ConnectionIdleTimeout"), ConnectionIdleTimeout, GEngineIni);
-	GConfig->GetBool(TEXT("AccelByteNetworkUtilities"), TEXT("UseTurnManager"), bIsUseTurnManager, GEngineIni);
+	FAccelByteUtilities::LoadABConfigFallback(TEXT("AccelByteNetworkUtilities"), TEXT("RequestConnectTimeout"), RequestConnectTimeout);
+	FAccelByteUtilities::LoadABConfigFallback(TEXT("AccelByteNetworkUtilities"), TEXT("ConnectionIdleTimeout"), ConnectionIdleTimeout);
+	FAccelByteUtilities::LoadABConfigFallback(TEXT("AccelByteNetworkUtilities"), TEXT("UseTurnManager"), bIsUseTurnManager);
 
 	// setup tick
 	FTickerDelegate TickerDelegate = FTickerDelegate::CreateRaw(this, &AccelByteNetworkManager::Tick);
@@ -248,14 +248,14 @@ void AccelByteNetworkManager::RequestConnectWithTurnServer(const FString& PeerCh
 
 	FString TurnSecret;
 	FString TurnUsername;
-	if(!GConfig->GetString(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerSecret"), TurnSecret, GEngineIni))
+	if(!FAccelByteUtilities::LoadABConfigFallback(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerSecret"), TurnSecret))
 	{
-		UE_LOG_ABNET(Error, TEXT("TurnServerSecret was missing in DefaultEngine.ini"));
+		UE_LOG_ABNET(Error, TEXT("TurnServerSecret was missing in DefaultEngine.ini or in the Command Line Arguments"));
 	}
-	if(!GConfig->GetString(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerUsername"), TurnUsername, GEngineIni))
+	if(!FAccelByteUtilities::LoadABConfigFallback(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerUsername"), TurnUsername))
 	{
 		TurnUsername = TEXT("accelbyte");
-		UE_LOG_ABNET(Warning, TEXT("TurnServerUsername was missing in DefaultEngine.ini, using default username"));
+		UE_LOG_ABNET(Warning, TEXT("TurnServerUsername was missing in DefaultEngine.ini or in the Command Line Arguments, using default username"));
 	}
 
 	if(!TurnSecret.IsEmpty())

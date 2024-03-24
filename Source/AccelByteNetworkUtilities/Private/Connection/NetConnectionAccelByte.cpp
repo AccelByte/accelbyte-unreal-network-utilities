@@ -38,7 +38,7 @@ void UIpConnectionAccelByte::InitLocalConnection(class UNetDriver* InDriver, cla
 
 		FString ParamValue;
 		bool bNonSeamlessTravelUseNewConnection = false;
-		GConfig->GetBool(TEXT("AccelByteNetworkUtilities"), TEXT("bNonSeamlessTravelUseNewConnection"), bNonSeamlessTravelUseNewConnection, GEngineIni);
+		FAccelByteUtilities::LoadABConfigFallback(TEXT("AccelByteNetworkUtilities"), TEXT("bNonSeamlessTravelUseNewConnection"), bNonSeamlessTravelUseNewConnection);
 
 		if(bNonSeamlessTravelUseNewConnection)
 		{

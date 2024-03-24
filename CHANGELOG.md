@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [4.3.2](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/4.3.2%0D4.3.1) (2024-03-24)
+
+
+### Bug Fixes
+
+* **setting:** make sure all overriden setting goes to accelbyte config injection as well. ([c5babe0](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/c5babe0afff2b6fbd7248d21d15dbdf7d275307a))
+
 ### [4.3.1](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/4.3.1%0D4.3.0) (2024-03-08)
 
 
