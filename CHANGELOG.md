@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [4.3.3](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/4.3.3%0D4.3.2) (2024-05-22)
+
+
+### Bug Fixes
+
+* change signaling object using smart pointer ([2063ef6](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/2063ef62abb899c7bb5afde122bb979b7706b1b0))
+
 ### [4.3.2](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/4.3.2%0D4.3.1) (2024-03-24)
 
 

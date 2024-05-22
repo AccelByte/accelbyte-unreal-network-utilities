@@ -148,7 +148,7 @@ public:
 	*
 	* @param Value
 	*/
-	void SetSignaling(AccelByteSignalingBase *Value)
+	void SetSignaling(TSharedPtr<AccelByteSignalingBase> Value)
 	{
 		Signaling = Value;
 	}
@@ -189,7 +189,7 @@ protected:
 	 * Handle all signaling message for exchange information about ICE candidates, ICE description
 	 * with other remote peer that want to connect
 	 */
-	AccelByteSignalingBase *Signaling = nullptr;
+	TSharedPtr<AccelByteSignalingBase> Signaling;
 
 	// True if this instance is the initiator of a connection request to the peer
 	bool bIsInitiator = false;

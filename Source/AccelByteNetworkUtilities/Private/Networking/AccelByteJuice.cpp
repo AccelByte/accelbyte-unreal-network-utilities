@@ -90,6 +90,12 @@ bool AccelByteJuice::RequestConnect(const FString &ServerUrl, int ServerPort, co
 {
 	InitiateConnectionTime = FDateTime::Now();
 
+	if (!Signaling.IsValid())
+	{
+		UE_LOG_ABNET(Error, TEXT("Signaling is not valid!"));
+		return false;
+	}
+	
 	if (!Signaling->IsConnected())
 	{
 		UE_LOG_ABNET(Error, TEXT("Signaling server is disconnected"));

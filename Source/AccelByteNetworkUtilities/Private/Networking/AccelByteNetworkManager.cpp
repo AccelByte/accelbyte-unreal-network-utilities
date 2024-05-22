@@ -359,7 +359,7 @@ TSharedPtr<AccelByteICEBase, ESPMode::ThreadSafe> AccelByteNetworkManager::Creat
 #else
 	TSharedPtr<AccelByteICEBase, ESPMode::ThreadSafe> Rtc = MakeShared<AccelByteNullICEConnection>(PeerChannel);
 #endif
-	Rtc->SetSignaling(Signaling.Get());
+	Rtc->SetSignaling(Signaling);
 	Rtc->SetOnICEDataChannelConnectedDelegate(AccelByteICEBase::OnICEDataChannelConnected::CreateRaw(this, &AccelByteNetworkManager::RTCConnected));
 	Rtc->SetOnICEDataChannelClosedDelegate(AccelByteICEBase::OnICEDataChannelClosed::CreateRaw(this, &AccelByteNetworkManager::RTCClosed));
 	Rtc->SetOnICEDataReadyDelegate(AccelByteICEBase::OnICEDataReady::CreateRaw(this, &AccelByteNetworkManager::IncomingData));
