@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
-	"Version": 39,
-	"VersionName": "4.3.3",
+	"Version": 40,
+	"VersionName": "4.3.4",
 	"FriendlyName": "AccelByteNetworkUtilities",
 	"Description": "Provides shared network helpers and utilities for working with AccelByte online services, including STUN/TURN.",
 	"Category": "Other",

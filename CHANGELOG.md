@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [4.3.4](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/4.3.4%0D4.3.3) (2024-07-05)
+
+
+### Bug Fixes
+
+* **turn:** update get closest turn server using the new one and get latencies first before send it to metrics endpoint ([581cbe1](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/581cbe1db5c3b28102b35f45a572f566078fe154))
+
 ### [4.3.3](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/4.3.3%0D4.3.2) (2024-05-22)
 
 

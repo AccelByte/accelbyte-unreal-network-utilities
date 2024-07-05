@@ -58,7 +58,7 @@ bool AccelByteNetworkManager::RequestConnect(const FString& PeerChannel)
 
 	if(bIsUseTurnManager)
 	{
-		ApiClientPtr->TurnManager.GetClosestTurnServer(THandler<FAccelByteModelsTurnServer>::CreateLambda(
+		ApiClientPtr->TurnManager.GetClosestTurnServerV2(THandler<FAccelByteModelsTurnServer>::CreateLambda(
 			[this, PeerChannel](const FAccelByteModelsTurnServer &Result)
 				{
 					RequestConnectWithTurnServer(PeerChannel, Result);
@@ -506,7 +506,7 @@ void AccelByteNetworkManager::OnICEConnectionLostCallback(const FString& PeerCha
 		return;
 	}
 
-	ApiClientPtr->TurnManager.GetClosestTurnServer(
+	ApiClientPtr->TurnManager.GetClosestTurnServerV2(
 		THandler<FAccelByteModelsTurnServer>::CreateLambda([this, Connection, PeerChannel](const FAccelByteModelsTurnServer &Result)
 		{
 			ApiClientPtr->TurnManager.GetTurnCredential(Result.Region, Result.Ip, Result.Port,
@@ -539,12 +539,20 @@ void AccelByteNetworkManager::SendMetricData(const EP2PConnectionType& P2PConnec
 
 	UE_LOG_ABNET(Log, TEXT("Selected turn server region: %s"), *SelectedTurnServerRegion);
 
-	ApiClientPtr->TurnManager.SendMetric(SelectedTurnServerRegion, P2PConnectionType,
-		FVoidHandler::CreateLambda([this]()
+	ApiClientPtr->TurnManager.GetTurnServerLatencyByRegion(SelectedTurnServerRegion, THandler<int32>::CreateLambda([this, P2PConnectionType]
+		(int32 Latency)
 	{
-		SelectedTurnServerRegion.Empty();
-	}),
-	FErrorHandler::CreateLambda([this](const int32 &ErrorCode, const FString &ErrorMessage)
+		ApiClientPtr->TurnManager.SendMetric(SelectedTurnServerRegion, P2PConnectionType,
+		FVoidHandler::CreateLambda([this]()
+		{
+			SelectedTurnServerRegion.Empty();
+		}),
+		FErrorHandler::CreateLambda([this](const int32 &ErrorCode, const FString &ErrorMessage)
+		{
+			SelectedTurnServerRegion.Empty();
+			UE_LOG_ABNET(Error, TEXT("Error sending metric data: %d %s"), ErrorCode, *ErrorMessage);
+		}), Latency);
+	}), FErrorHandler::CreateLambda([this](int32 ErrorCode, const FString& ErrorMessage)
 	{
 		SelectedTurnServerRegion.Empty();
 		UE_LOG_ABNET(Error, TEXT("Error sending metric data: %d %s"), ErrorCode, *ErrorMessage);
