@@ -179,6 +179,9 @@ private:
 
 	bool bIsRunning = false;
 
+	// Store flag to send metric automatically or not
+	bool bIsSendMetricAutomatically = true;
+
 	// Store selected turn manager region for metric purpose, only updated by client
 	FString SelectedTurnServerRegion;
 
@@ -212,7 +215,7 @@ private:
 	 * @param PeerChannel peer and channel to connect to
 	 * @param TurnServer turn server use to make the p2p connection
 	 */
-	void RequestConnectWithTurnServer(const FString& PeerChannel, const FAccelByteModelsTurnServer &TurnServer); 
+	void RequestConnectWithTurnServer(const FString& PeerChannel, const FAccelByteModelsTurnServer &TurnServer);
 
 	/**
 	 * @brief Check whatever there is data ready to read from cached data (LastReadData)

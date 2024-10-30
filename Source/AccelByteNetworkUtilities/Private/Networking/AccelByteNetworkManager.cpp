@@ -115,6 +115,7 @@ void AccelByteNetworkManager::Setup(AccelByte::FApiClientPtr InApiClientPtr)
 	FAccelByteUtilities::LoadABConfigFallback(TEXT("AccelByteNetworkUtilities"), TEXT("RequestConnectTimeout"), RequestConnectTimeout);
 	FAccelByteUtilities::LoadABConfigFallback(TEXT("AccelByteNetworkUtilities"), TEXT("ConnectionIdleTimeout"), ConnectionIdleTimeout);
 	FAccelByteUtilities::LoadABConfigFallback(TEXT("AccelByteNetworkUtilities"), TEXT("UseTurnManager"), bIsUseTurnManager);
+	FAccelByteUtilities::LoadABConfigFallback(TEXT("AccelByteNetworkUtilities"), TEXT("bSendMetricAutomatically"), bIsSendMetricAutomatically);
 
 	// setup tick
 	FTickerDelegate TickerDelegate = FTickerDelegate::CreateRaw(this, &AccelByteNetworkManager::Tick);
@@ -337,7 +338,10 @@ void AccelByteNetworkManager::RTCConnected(const FString& PeerChannel, const EP2
 	OnWebRTCDataChannelConnectedDelegate.ExecuteIfBound(PeerChannel, true);
 	OnWebRTCRequestConnectFinishedDelegate.ExecuteIfBound(PeerChannel, EAccelByteP2PConnectionStatus::Success);
 
-	SendMetricData(P2PConnectionType);
+	if (bIsSendMetricAutomatically)
+	{
+		SendMetricData(P2PConnectionType);
+	}
 }
 
 void AccelByteNetworkManager::RTCClosed(const FString& PeerChannel)

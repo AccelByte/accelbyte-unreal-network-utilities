@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [4.4.0](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/4.4.0%0D4.3.4) (2024-10-30)
+
+
+### Features
+
+* **qos:** add flag to not send metric automatically ([62d9a87](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/62d9a875525dce467b245d3a725e07a2f4fa1a12))
+
 ### [4.3.4](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/4.3.4%0D4.3.3) (2024-07-05)
 
 
