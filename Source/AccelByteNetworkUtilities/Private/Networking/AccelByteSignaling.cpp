@@ -9,28 +9,60 @@
 #include "Api/AccelByteLobbyApi.h"
 
 
-AccelByteSignaling::AccelByteSignaling(AccelByte::FApiClientPtr InApiClient):ApiClientPtr(InApiClient)
+AccelByteSignaling::AccelByteSignaling(AccelByte::FApiClientPtr InApiClientPtr)
+	: bIsInitialized { false }
+	, ApiClientWPtr { InApiClientPtr }
 {
 }
 
 void AccelByteSignaling::Init()
 {
+	auto ApiClientPtr = ApiClientWPtr.Pin();
+
+	if (!ApiClientPtr.IsValid())
+	{
+		return;
+	}
+
 	auto Delegate = AccelByte::Api::Lobby::FSignalingP2P::CreateSP(SharedThis(this), &AccelByteSignaling::OnSignalingMessage);
 	ApiClientPtr->Lobby.SetSignalingP2PDelegate(Delegate);
+	bIsInitialized = true;
 }
 
 bool AccelByteSignaling::IsConnected() const
 {
-	return ApiClientPtr->Lobby.IsConnected();
+	auto ApiClientPtr = ApiClientWPtr.Pin();
+
+	if (!ApiClientPtr.IsValid())
+	{
+		return false;
+	}
+
+	return bIsInitialized && ApiClientPtr->Lobby.IsConnected();
 }
 
 void AccelByteSignaling::Connect()
 {	
+	auto ApiClientPtr = ApiClientWPtr.Pin();
+
+	if (!ApiClientPtr.IsValid())
+	{
+		return;
+	}
+
 	ApiClientPtr->Lobby.Connect();
 }
 
 void AccelByteSignaling::SendMessage(const FString& PeerId, const FAccelByteSignalingMessage& Message)
 {
+	auto ApiClientPtr = ApiClientWPtr.Pin();
+
+	if (!ApiClientPtr.IsValid())
+	{
+		UE_LOG_ABSIGNALING(Error, TEXT("unable to send signaling message due to invalid ApiClient"));
+		return;
+	}
+
 	FString StringMessage;
 	if(FJsonObjectConverter::UStructToJsonObjectString(Message, StringMessage))
 	{
@@ -38,7 +70,7 @@ void AccelByteSignaling::SendMessage(const FString& PeerId, const FAccelByteSign
 	}
 	else
 	{
-		UE_LOG_ABSIGNALING(Error, TEXT("unable to convert signaling message to json string"))
+		UE_LOG_ABSIGNALING(Error, TEXT("unable to convert signaling message to json string"));
 	}
 }
 

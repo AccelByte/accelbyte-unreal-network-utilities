@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [4.4.1](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/4.4.1%0D4.4.0) (2025-02-28)
+
+
+### Refactors
+
+* change ApiClient to use weak pointers ([651bbc0](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/651bbc00f299ed65d1421854ced3468a7ed0dc3e))
+
 ## [4.4.0](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/4.4.0%0D4.3.4) (2024-10-30)
 
 

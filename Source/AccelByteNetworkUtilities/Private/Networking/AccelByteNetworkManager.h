@@ -146,7 +146,7 @@ public:
 
 private:
 	// Api client to communicate with AccelByte services
-	AccelByte::FApiClientPtr ApiClientPtr;
+	AccelByte::FApiClientWPtr ApiClientWPtr;
 
 	//Instance of the Signaling client
 	TSharedPtr<AccelByteSignalingBase> Signaling;
