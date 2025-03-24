@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "Core/AccelByteMultiRegistry.h"
+#include "Core/AccelByteApiClient.h"
 #include "AccelByteNetworkingStatus.h"
 
 class ACCELBYTENETWORKUTILITIES_API FAccelByteNetworkUtilitiesModule : public IModuleInterface

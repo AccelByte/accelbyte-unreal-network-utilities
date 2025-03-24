@@ -64,21 +64,30 @@ bool AccelByteNetworkManager::RequestConnect(const FString& PeerChannel)
 		{
 			OnWebRTCDataChannelConnectedDelegate.ExecuteIfBound(PeerChannel, false);
 			OnWebRTCRequestConnectFinishedDelegate.ExecuteIfBound(PeerChannel, EAccelByteP2PConnectionStatus::FailedGettingTurnServer);
+			UE_LOG_ABNET(Warning, TEXT("Invalid API Client"));
 			return false;
 		}
 		
-		ApiClientPtr->TurnManager.GetClosestTurnServerV2(THandler<FAccelByteModelsTurnServer>::CreateLambda(
-				[this, PeerChannel](const FAccelByteModelsTurnServer& Result)
-				{
-					RequestConnectWithTurnServer(PeerChannel, Result);
-				})
-			, FErrorHandler::CreateLambda(
-				[this, PeerChannel](int32, const FString& ErrorMessage)
-				{
-					UE_LOG_ABNET(Error, TEXT("Error getting turn server from turn manager: %s"), *ErrorMessage);
-					OnWebRTCDataChannelConnectedDelegate.ExecuteIfBound(PeerChannel, false);
-					OnWebRTCRequestConnectFinishedDelegate.ExecuteIfBound(PeerChannel, EAccelByteP2PConnectionStatus::FailedGettingTurnServer);
-				}));		
+		auto TurnManager = ApiClientPtr->GetTurnManagerApi().Pin();
+		if (TurnManager.IsValid())
+		{
+			TurnManager->GetClosestTurnServerV2(THandler<FAccelByteModelsTurnServer>::CreateLambda(
+					[this, PeerChannel](const FAccelByteModelsTurnServer& Result)
+					{
+						RequestConnectWithTurnServer(PeerChannel, Result);
+					})
+				, FErrorHandler::CreateLambda(
+					[this, PeerChannel](int32, const FString& ErrorMessage)
+					{
+						UE_LOG_ABNET(Error, TEXT("Error getting turn server from turn manager: %s"), *ErrorMessage);
+						OnWebRTCDataChannelConnectedDelegate.ExecuteIfBound(PeerChannel, false);
+						OnWebRTCRequestConnectFinishedDelegate.ExecuteIfBound(PeerChannel, EAccelByteP2PConnectionStatus::FailedGettingTurnServer);
+					}));		
+		}
+		else
+		{
+			UE_LOG_ABNET(Warning, TEXT("Invalid TurnManager API from API Client"));
+		}
 	}
 	else
 	{
@@ -475,30 +484,39 @@ void AccelByteNetworkManager::RequestCredentialAndConnect(const FString& PeerId,
 	{
 		OnWebRTCDataChannelConnectedDelegate.ExecuteIfBound(PeerId, false);
 		OnWebRTCRequestConnectFinishedDelegate.ExecuteIfBound(PeerId, EAccelByteP2PConnectionStatus::FailedGettingTurnServerCredential);
+		UE_LOG_ABNET(Warning, TEXT("Invalid API Client"));
 		return;
 	}
 
-	ApiClientPtr->TurnManager.GetTurnCredential(SelectedTurnServer.Region, SelectedTurnServer.Ip, SelectedTurnServer.Port
-		, THandler<FAccelByteModelsTurnServerCredential>::CreateLambda(
-			[this, PeerId](const FAccelByteModelsTurnServerCredential& Credential)
-			{
-				TSharedPtr<AccelByteICEBase, ESPMode::ThreadSafe> Rtc = CreateNewConnection(PeerId);
-				PeerIdToICEConnectionMap.Add(PeerId, Rtc);
-				FString Password = Credential.Password;
-				FString ParamValue;
-				if (FParse::Value(FCommandLine::Get(), TEXT("juiceforcefailed"), ParamValue))
+	auto TurnManager = ApiClientPtr->GetTurnManagerApi().Pin();
+	if (TurnManager.IsValid())
+	{
+		TurnManager->GetTurnCredential(SelectedTurnServer.Region, SelectedTurnServer.Ip, SelectedTurnServer.Port
+			, THandler<FAccelByteModelsTurnServerCredential>::CreateLambda(
+				[this, PeerId](const FAccelByteModelsTurnServerCredential& Credential)
 				{
-					Password = TEXT("failedpassword");
-				}
-				Rtc->RequestConnect(Credential.Ip, Credential.Port, Credential.Username, Password);
-			})
-		, FErrorHandler::CreateLambda(
-			[this, PeerId](int32 Code, const FString& ErrorMessage)
-			{
-				UE_LOG_ABNET(Error, TEXT("Error getting turn server credential: %s"), *ErrorMessage);
-				OnWebRTCDataChannelConnectedDelegate.ExecuteIfBound(PeerId, false);
-				OnWebRTCRequestConnectFinishedDelegate.ExecuteIfBound(PeerId, EAccelByteP2PConnectionStatus::FailedGettingTurnServerCredential);
-			}));
+					TSharedPtr<AccelByteICEBase, ESPMode::ThreadSafe> Rtc = CreateNewConnection(PeerId);
+					PeerIdToICEConnectionMap.Add(PeerId, Rtc);
+					FString Password = Credential.Password;
+					FString ParamValue;
+					if (FParse::Value(FCommandLine::Get(), TEXT("juiceforcefailed"), ParamValue))
+					{
+						Password = TEXT("failedpassword");
+					}
+					Rtc->RequestConnect(Credential.Ip, Credential.Port, Credential.Username, Password);
+				})
+			, FErrorHandler::CreateLambda(
+				[this, PeerId](int32 Code, const FString& ErrorMessage)
+				{
+					UE_LOG_ABNET(Error, TEXT("Error getting turn server credential: %s"), *ErrorMessage);
+					OnWebRTCDataChannelConnectedDelegate.ExecuteIfBound(PeerId, false);
+					OnWebRTCRequestConnectFinishedDelegate.ExecuteIfBound(PeerId, EAccelByteP2PConnectionStatus::FailedGettingTurnServerCredential);
+				}));
+	}
+	else
+	{
+		UE_LOG_ABNET(Warning, TEXT("Invalid TurnManager API from API Client"));
+	}
 }
 
 void AccelByteNetworkManager::OnICEConnectionErrorCallback(const FString& PeerId, const EAccelByteP2PConnectionStatus& Status)
@@ -538,32 +556,41 @@ void AccelByteNetworkManager::OnICEConnectionLostCallback(const FString& PeerCha
 	if (!ApiClientPtr.IsValid())
 	{
 		ClosePeerConnection(PeerChannel);
+		UE_LOG_ABNET(Warning, TEXT("Invalid API Client"));
 		return;
 	}
 
-	ApiClientPtr->TurnManager.GetClosestTurnServerV2(
-		THandler<FAccelByteModelsTurnServer>::CreateLambda(
-			[this, ApiClientPtr, Connection, PeerChannel](const FAccelByteModelsTurnServer &Result)
-			{
-				ApiClientPtr->TurnManager.GetTurnCredential(Result.Region, Result.Ip, Result.Port
-					, THandler<FAccelByteModelsTurnServerCredential>::CreateLambda(
-						[this, Connection](const FAccelByteModelsTurnServerCredential &Credential)
-						{
-							Connection->ScheduleReconnection(Credential);
-						})
-					, FErrorHandler::CreateLambda(
-						[this, PeerChannel](int32 Code, const FString &ErrorMessage)
-						{
-							UE_LOG_ABNET(Error, TEXT("Error getting turn server credential when executing reconnection: %s"), *ErrorMessage);
-							ClosePeerConnection(PeerChannel);
-						}));
-			})
-		, FErrorHandler::CreateLambda(
-			[this, PeerChannel](int32, const FString &ErrorMessage)
-			{
-				UE_LOG_ABNET(Error, TEXT("Error getting turn server from turn manager when executing reconnection: %s"), *ErrorMessage);
-				ClosePeerConnection(PeerChannel);
-			}));
+	auto TurnManager = ApiClientPtr->GetTurnManagerApi().Pin();
+	if (TurnManager.IsValid())
+	{
+		TurnManager->GetClosestTurnServerV2(
+			THandler<FAccelByteModelsTurnServer>::CreateLambda(
+				[this, TurnManager, Connection, PeerChannel](const FAccelByteModelsTurnServer &Result)
+				{
+					TurnManager->GetTurnCredential(Result.Region, Result.Ip, Result.Port
+						, THandler<FAccelByteModelsTurnServerCredential>::CreateLambda(
+							[this, Connection](const FAccelByteModelsTurnServerCredential &Credential)
+							{
+								Connection->ScheduleReconnection(Credential);
+							})
+						, FErrorHandler::CreateLambda(
+							[this, PeerChannel](int32 Code, const FString &ErrorMessage)
+							{
+								UE_LOG_ABNET(Error, TEXT("Error getting turn server credential when executing reconnection: %s"), *ErrorMessage);
+								ClosePeerConnection(PeerChannel);
+							}));
+				})
+			, FErrorHandler::CreateLambda(
+				[this, PeerChannel](int32, const FString &ErrorMessage)
+				{
+					UE_LOG_ABNET(Error, TEXT("Error getting turn server from turn manager when executing reconnection: %s"), *ErrorMessage);
+					ClosePeerConnection(PeerChannel);
+				}));
+	}
+	else
+	{
+		UE_LOG_ABNET(Warning, TEXT("Invalid TurnManager API from API Client"));
+	}
 }
 
 void AccelByteNetworkManager::SendMetricData(const EP2PConnectionType& P2PConnectionType)
@@ -583,33 +610,42 @@ void AccelByteNetworkManager::SendMetricData(const EP2PConnectionType& P2PConnec
 	if (!ApiClientPtr.IsValid())
 	{
 		SelectedTurnServerRegion.Empty();
+		UE_LOG_ABNET(Warning, TEXT("Invalid API Client"));
 		return;
 	}
 
-	ApiClientPtr->TurnManager.GetTurnServerLatencyByRegion(SelectedTurnServerRegion
-		, THandler<int32>::CreateLambda(
-			[this, ApiClientPtr, P2PConnectionType] (int32 Latency)
-			{
-				ApiClientPtr->TurnManager.SendMetric(SelectedTurnServerRegion, P2PConnectionType
-					, FVoidHandler::CreateLambda(
-						[this]()
-						{
-							SelectedTurnServerRegion.Empty();
-						})
-					, FErrorHandler::CreateLambda(
-						[this](const int32 &ErrorCode, const FString &ErrorMessage)
-						{
-							SelectedTurnServerRegion.Empty();
-							UE_LOG_ABNET(Error, TEXT("Error sending metric data: %d %s"), ErrorCode, *ErrorMessage);
-						})
-					, Latency);
-			})
-		, FErrorHandler::CreateLambda(
-			[this](int32 ErrorCode, const FString& ErrorMessage)
-			{
-				SelectedTurnServerRegion.Empty();
-				UE_LOG_ABNET(Error, TEXT("Error sending metric data: %d %s"), ErrorCode, *ErrorMessage);
-			}));
+	auto TurnManager = ApiClientPtr->GetTurnManagerApi().Pin();
+	if (TurnManager.IsValid())
+	{
+		TurnManager->GetTurnServerLatencyByRegion(SelectedTurnServerRegion
+			, THandler<int32>::CreateLambda(
+				[this, TurnManager, P2PConnectionType] (int32 Latency)
+				{
+					TurnManager->SendMetric(SelectedTurnServerRegion, P2PConnectionType
+						, FVoidHandler::CreateLambda(
+							[this]()
+							{
+								SelectedTurnServerRegion.Empty();
+							})
+						, FErrorHandler::CreateLambda(
+							[this](const int32 &ErrorCode, const FString &ErrorMessage)
+							{
+								SelectedTurnServerRegion.Empty();
+								UE_LOG_ABNET(Error, TEXT("Error sending metric data: %d %s"), ErrorCode, *ErrorMessage);
+							})
+						, Latency);
+				})
+			, FErrorHandler::CreateLambda(
+				[this](int32 ErrorCode, const FString& ErrorMessage)
+				{
+					SelectedTurnServerRegion.Empty();
+					UE_LOG_ABNET(Error, TEXT("Error sending metric data: %d %s"), ErrorCode, *ErrorMessage);
+				}));
+	}
+	else
+	{
+		UE_LOG_ABNET(Warning, TEXT("Invalid TurnManager API from API Client"));
+	}
 }
 
 void AccelByteNetworkManager::TouchConnection(const FString &PeerChannel)

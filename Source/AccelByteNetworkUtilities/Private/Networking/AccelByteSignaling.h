@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include "Core/AccelByteMultiRegistry.h"
 #include "AccelByteSignalingBase.h"
+#include "Core/AccelByteApiClient.h"
 
 /*
  * AccelByteSignaling implementation of Signaling using AccelByte lobby backend

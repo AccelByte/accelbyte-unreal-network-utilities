@@ -5,8 +5,8 @@
 #include "AccelByteSignaling.h"
 #include "Misc/Base64.h"
 #include "AccelByteNetworkUtilitiesLog.h"
-#include "Core/AccelByteRegistry.h"
 #include "Api/AccelByteLobbyApi.h"
+#include "AccelByteNetworkUtilitiesLog.h"
 
 
 AccelByteSignaling::AccelByteSignaling(AccelByte::FApiClientPtr InApiClientPtr)
@@ -21,12 +21,21 @@ void AccelByteSignaling::Init()
 
 	if (!ApiClientPtr.IsValid())
 	{
+		UE_LOG_ABSIGNALING(Error, TEXT("Unable to init Signaling class, Invalid API Client"));
 		return;
 	}
 
-	auto Delegate = AccelByte::Api::Lobby::FSignalingP2P::CreateSP(SharedThis(this), &AccelByteSignaling::OnSignalingMessage);
-	ApiClientPtr->Lobby.SetSignalingP2PDelegate(Delegate);
-	bIsInitialized = true;
+	auto Lobby = ApiClientPtr->GetLobbyApi().Pin();
+	if (Lobby.IsValid())
+	{
+		auto Delegate = AccelByte::Api::Lobby::FSignalingP2P::CreateSP(SharedThis(this), &AccelByteSignaling::OnSignalingMessage);
+		Lobby->SetSignalingP2PDelegate(Delegate);
+		bIsInitialized = true;
+	}
+	else
+	{
+		UE_LOG_ABSIGNALING(Warning, TEXT("Unable to init Signaling class, Invalid Lobby API from API Client"));
+	}
 }
 
 bool AccelByteSignaling::IsConnected() const
@@ -35,10 +44,21 @@ bool AccelByteSignaling::IsConnected() const
 
 	if (!ApiClientPtr.IsValid())
 	{
+		UE_LOG_ABSIGNALING(Error, TEXT("Cannot check connection status, Invalid API Client"));
 		return false;
 	}
 
-	return bIsInitialized && ApiClientPtr->Lobby.IsConnected();
+	bool bIsConnected = false;
+	auto Lobby = ApiClientPtr->GetLobbyApi().Pin();
+	if (Lobby.IsValid())
+	{
+		bIsConnected = Lobby->IsConnected();
+	}
+	else
+	{
+		UE_LOG_ABSIGNALING(Warning, TEXT("Cannot check connection status, Invalid Lobby API from API Client"));
+	}
+	return bIsInitialized && bIsConnected;
 }
 
 void AccelByteSignaling::Connect()
@@ -47,10 +67,19 @@ void AccelByteSignaling::Connect()
 
 	if (!ApiClientPtr.IsValid())
 	{
+		UE_LOG_ABSIGNALING(Error, TEXT("Cannot connect, Invalid API Client"));
 		return;
 	}
 
-	ApiClientPtr->Lobby.Connect();
+	auto Lobby = ApiClientPtr->GetLobbyApi().Pin();
+	if (Lobby.IsValid())
+	{
+		Lobby->Connect();
+	}
+	else
+	{
+		UE_LOG_ABSIGNALING(Warning, TEXT("Cannot connect, Invalid Lobby API from API Client"));
+	}
 }
 
 void AccelByteSignaling::SendMessage(const FString& PeerId, const FAccelByteSignalingMessage& Message)
@@ -59,18 +88,26 @@ void AccelByteSignaling::SendMessage(const FString& PeerId, const FAccelByteSign
 
 	if (!ApiClientPtr.IsValid())
 	{
-		UE_LOG_ABSIGNALING(Error, TEXT("unable to send signaling message due to invalid ApiClient"));
+		UE_LOG_ABSIGNALING(Error, TEXT("Unable to send signaling message, invalid ApiClient"));
 		return;
 	}
 
 	FString StringMessage;
 	if(FJsonObjectConverter::UStructToJsonObjectString(Message, StringMessage))
 	{
-		ApiClientPtr->Lobby.SendSignalingMessage(PeerId, FBase64::Encode(StringMessage));
+		auto Lobby = ApiClientPtr->GetLobbyApi().Pin();
+		if (Lobby.IsValid())
+		{
+			Lobby->SendSignalingMessage(PeerId, FBase64::Encode(StringMessage));
+		}
+		else
+		{
+			UE_LOG_ABSIGNALING(Warning, TEXT("Unable to send signaling message, Invalid Lobby API from API Client"));
+		}
 	}
 	else
 	{
-		UE_LOG_ABSIGNALING(Error, TEXT("unable to convert signaling message to json string"));
+		UE_LOG_ABSIGNALING(Error, TEXT("Unable to convert signaling message to json string"));
 	}
 }
 

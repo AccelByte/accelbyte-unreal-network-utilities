@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [5.0.0](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/5.0.0%0D4.4.1) (2025-03-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* decommissioned ApiClass reference usage in ApiClient
+
+### Bug Fixes
+
+* crash when initiating P2P due to double locking a mutex ([848a2c9](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/848a2c94ce9cbc2a5e6a7b379e23d33346b9856e))
+
+
+### Refactors
+
+* decommissioned ApiClass reference usage in ApiClient ([e5c4cb5](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/e5c4cb5cd1466facf5e767a58077afdbe89b8fd6))
+
 ### [4.4.1](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/4.4.1%0D4.4.0) (2025-02-28)
 
 

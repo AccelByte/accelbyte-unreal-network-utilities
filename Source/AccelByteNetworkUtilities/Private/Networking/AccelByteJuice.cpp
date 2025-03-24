@@ -390,7 +390,7 @@ void AccelByteJuice::JuiceStateChanged(juice_state_t State)
 
 		if (!bReconnection)
 		{
-#if PLATFORM_MAC
+#if PLATFORM_MAC || PLATFORM_SWITCH
 			// mac issue, need to be called from game thread
 			AsyncTask(ENamedThreads::GameThread, [this]()
 			{
