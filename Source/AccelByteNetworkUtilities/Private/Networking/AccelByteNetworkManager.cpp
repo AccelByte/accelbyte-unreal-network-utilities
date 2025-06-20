@@ -311,7 +311,7 @@ void AccelByteNetworkManager::OnSignalingMessage(const FString& PeerId, const FS
 	FBase64::Decode(Message, Base64Decoded);
 	UE_LOG_ABSIGNALING(Verbose, TEXT("Signaling message from: %s; Message: %s"), *PeerId, *Base64Decoded);
 	FAccelByteSignalingMessage SignalingMessage;
-	if(!FJsonObjectConverter::JsonObjectStringToUStruct(Base64Decoded, &SignalingMessage))
+	if(!FAccelByteJsonConverter::JsonObjectStringToUStruct(Base64Decoded, &SignalingMessage))
 	{
 		UE_LOG_ABSIGNALING(Error, TEXT("unable to convert json string to FAccelByteSignalingMessage"))
 		return;

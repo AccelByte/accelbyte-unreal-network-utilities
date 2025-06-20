@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [5.0.1](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/5.0.1%0D5.0.0) (2025-06-20)
+
+
+### Bug Fixes
+
+* change JsonConverter to AccelByteJsonConverter to prevent crashes when enum values are not found ([1be1a91](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/1be1a9118dfcfa005af6a8478b661fb2d2cfe56f))
+
 ## [5.0.0](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/5.0.0%0D4.4.1) (2025-03-24)
 
 
