@@ -9,4 +9,4 @@ Detail please check [https://en.wikipedia.org/wiki/Interactive_Connectivity_Esta
 
 ### Documentation ###
 
-The setup and implementation guideline are available in [our portal](https://docs-preview.accelbyte.io/gaming-services/services/play/session/session-browser/).
+The setup and implementation guideline are available in [our portal](https://docs.accelbyte.io/gaming-services/services/play/session/#session-browser).
