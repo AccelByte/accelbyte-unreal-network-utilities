@@ -158,6 +158,12 @@ bool AccelByteJuice::IsPeerReady() const
 	return JuiceAgent != nullptr;
 }
 
+static void SafeStringCopyConfigHelperMember(char (& Member)[TURN_MAX_LENGTH], const FString& String)
+{
+	FMemory::Memzero(Member, TURN_MAX_LENGTH);
+	FPlatformString::Strncpy(Member, TCHAR_TO_ANSI(*String), TURN_MAX_LENGTH - 1);
+}
+
 void AccelByteJuice::CreatePeerConnection(const FString& Host, const FString &Username, const FString &Password, int port)
 {
 	if(IsPeerReady())
@@ -173,12 +179,9 @@ void AccelByteJuice::CreatePeerConnection(const FString& Host, const FString &Us
 	 * Host, Username, and password are temporary and don't know when it get destroyed
 	 * So save it on its own char storage helper, because not sure when libjuice need it
 	 */
-	FMemory::Memzero(ConfigHelper.Host, TURN_MAX_LENGTH);
-	FPlatformString::Strcpy(ConfigHelper.Host, Host.Len(), TCHAR_TO_ANSI(*Host));
-	FMemory::Memzero(ConfigHelper.Username, TURN_MAX_LENGTH);
-	FPlatformString::Strcpy(ConfigHelper.Username, Username.Len(), TCHAR_TO_ANSI(*Username));
-	FMemory::Memzero(ConfigHelper.Password, TURN_MAX_LENGTH);
-	FPlatformString::Strcpy(ConfigHelper.Password, Password.Len(), TCHAR_TO_ANSI(*Password));
+	SafeStringCopyConfigHelperMember(ConfigHelper.Host, Host);
+	SafeStringCopyConfigHelperMember(ConfigHelper.Username, Username);
+	SafeStringCopyConfigHelperMember(ConfigHelper.Password, Password);
 	
 	TurnServerConfig[0].host = ConfigHelper.Host;
 	TurnServerConfig[0].port = port;

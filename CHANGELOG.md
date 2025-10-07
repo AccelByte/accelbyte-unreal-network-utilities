@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [5.0.3](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/5.0.3%0D5.0.2) (2025-10-07)
+
+
+### Bug Fixes
+
+* **AccelByteJuice:** avoid storing to temporary pointer ([86c0282](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/86c02827619d57d29f4b9e67a410e6d9b34b9595))
+* **AccelByteJuice:** null termination of strncpy ([74e76ea](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/74e76ea9bc349fdb850df036090f66c018078eb9))
+* change Strcpy to Strncpy due to compile warnings ([d5d39b4](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/d5d39b4d1d13624153a704e9466e09d4d26fed76))
+
 ### [5.0.2](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/5.0.2%0D5.0.1) (2025-07-21)
 
 ### [5.0.1](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/5.0.1%0D5.0.0) (2025-06-20)
