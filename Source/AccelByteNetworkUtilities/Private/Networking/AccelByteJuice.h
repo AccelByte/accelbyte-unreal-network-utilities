@@ -14,10 +14,10 @@
 #include "Core/AccelByteDefines.h"
 
 /*
- * Currently max char host name, username, and password is 64.
+ * Currently max char host name, username, and password is 256.
  * The example host will be: us-turn1.accelbyte.net, eu-turn2.accelbyte.net.
  */
-#define TURN_MAX_LENGTH 64
+#define TURN_MAX_LENGTH 256
 
 /*
  * Helper to store TURN config server that handle its own memory
