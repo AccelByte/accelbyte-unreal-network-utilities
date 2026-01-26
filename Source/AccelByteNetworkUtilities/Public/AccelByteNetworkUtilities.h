@@ -1,4 +1,4 @@
-// Copyright (c) 2021 AccelByte Inc. All Rights Reserved.
+// Copyright (c) 2025 AccelByte Inc. All Rights Reserved.
 // This is licensed software from AccelByte Inc, for limitations
 // and restrictions contact your company contract manager.
 
@@ -6,6 +6,7 @@
 
 #include "Core/AccelByteApiClient.h"
 #include "AccelByteNetworkingStatus.h"
+#include "Testing/AccelByteP2PMockInterface.h"
 
 class ACCELBYTENETWORKUTILITIES_API FAccelByteNetworkUtilitiesModule : public IModuleInterface
 {
@@ -121,4 +122,38 @@ public:
 	 * @param Channel The channel in integer
 	 */
 	static FString GeneratePeerChannelString(const FString& PeerId, int32 Channel);
+
+	/**
+	 * @brief FOR TESTING ONLY: Install a mock handler for P2P connections
+	 *
+	 * When a mock handler is installed, all P2P connection requests will be
+	 * intercepted and handled by the mock instead of the real networking layer.
+	 *
+	 * This is only used in test builds (when WITH_ACCELBYTE_P2P_MOCK is defined).
+	 * Always compiled for API stability, but only functional in test builds.
+	 *
+	 * USAGE:
+	 *   auto Mock = MakeShared<FMyP2PMock>();
+	 *   FAccelByteNetworkUtilitiesModule::Get().SetMockP2PHandler(Mock);
+	 *
+	 * @param MockHandler The mock handler to install (nullptr to remove)
+	 */
+	void SetMockP2PHandler(TSharedPtr<IAccelByteP2PConnectionMockHandler> MockHandler);
+
+	/**
+	 * @brief FOR TESTING ONLY: Check if mock handler is installed
+	 *
+	 * @return true if a mock P2P handler is currently installed
+	 */
+	bool IsMockP2PHandlerInstalled() const;
+
+	/**
+	 * @brief FOR TESTING ONLY: Get the installed mock handler
+	 *
+	 * Used internally by AccelByteNetworkManager to intercept P2P requests.
+	 * Always compiled for API stability, only functional when WITH_ACCELBYTE_P2P_MOCK is defined.
+	 *
+	 * @return The mock handler (nullptr if not installed)
+	 */
+	static TSharedPtr<IAccelByteP2PConnectionMockHandler> GetMockP2PHandler();
 };

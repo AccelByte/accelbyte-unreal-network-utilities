@@ -1,4 +1,4 @@
-// Copyright (c) 2021 AccelByte Inc. All Rights Reserved.
+// Copyright (c) 2025 AccelByte Inc. All Rights Reserved.
 // This is licensed software from AccelByte Inc, for limitations
 // and restrictions contact your company contract manager.
 
@@ -139,6 +139,21 @@ public:
 	 * @return true if all peers are connected and false if peer not exist or one of the peer disconnected.
 	 */
 	bool IsPeerConnected();
+
+	/**
+	 * @brief FOR TESTING ONLY: Manually trigger connection complete callback
+	 *
+	 * Used by mock handler to simulate P2P connection completion without
+	 * actual network communication.
+	 *
+	 * This method triggers the OnWebRTCRequestConnectFinishedDelegate as if
+	 * a real P2P connection completed.
+	 *
+	 * @param PeerId The peer ID (with channel) that "connected"
+	 * @param Status The connection status to report (Connected for success)
+	 */
+	void TriggerConnectionComplete(const FString& PeerId,
+		const AccelByte::NetworkUtilities::EAccelByteP2PConnectionStatus& Status);
 
 	OnWebRTCDataChannelConnected OnWebRTCDataChannelConnectedDelegate;
 	OnWebRTCRequestConnectFinished OnWebRTCRequestConnectFinishedDelegate;

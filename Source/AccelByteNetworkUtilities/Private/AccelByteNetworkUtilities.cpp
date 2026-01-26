@@ -1,4 +1,6 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright (c) 2025 AccelByte Inc. All Rights Reserved.
+// This is licensed software from AccelByte Inc, for limitations
+// and restrictions contact your company contract manager.
 
 #include "AccelByteNetworkUtilities.h"
 #include "Modules/ModuleManager.h"
@@ -8,6 +10,7 @@
 #include "Connection/SocketSubsystemAccelByte.h"
 #include "AccelByteNetworkUtilitiesConstant.h"
 #include "Networking/AccelByteNetworkManager.h"
+#include "Testing/AccelByteP2PMockInterface.h"
 
 using namespace AccelByte;
 
@@ -17,6 +20,8 @@ DEFINE_LOG_CATEGORY(AccelByteNetUtil);
 DEFINE_LOG_CATEGORY(AccelByteSignalingMessage);
 
 void* LibICEHandle = nullptr;
+
+static TSharedPtr<IAccelByteP2PConnectionMockHandler> MockP2PHandler;
 
 void FAccelByteNetworkUtilitiesModule::StartupModule()
 {
@@ -93,6 +98,13 @@ void FAccelByteNetworkUtilitiesModule::RegisterICEClosedDelegate(OnICEClosed Del
 
 void FAccelByteNetworkUtilitiesModule::CloseAllICEConnection()
 {
+	// Notify mock handler if present (test hook pattern - zero overhead if not installed)
+	if (MockP2PHandler.IsValid())
+	{
+		UE_LOG_ABNET(Log, TEXT("[MOCK] Notifying mock handler of CloseAll"));
+		MockP2PHandler->HandleCloseAll();
+	}
+
 	AccelByteNetworkManager::Instance().CloseAllPeerConnections();
 }
 
@@ -154,6 +166,30 @@ TTuple<FString, int32> FAccelByteNetworkUtilitiesModule::ExtractPeerAndChannel(c
 FString FAccelByteNetworkUtilitiesModule::GeneratePeerChannelString(const FString& PeerId, int32 Channel)
 {
 	return FString::Printf(TEXT("%s:%d"), *PeerId, Channel);
+}
+
+void FAccelByteNetworkUtilitiesModule::SetMockP2PHandler(TSharedPtr<IAccelByteP2PConnectionMockHandler> MockHandler)
+{
+	if (MockHandler.IsValid())
+	{
+		UE_LOG_ABNET(Log, TEXT("[MOCK] Installing P2P mock handler"));
+	}
+	else
+	{
+		UE_LOG_ABNET(Log, TEXT("[MOCK] Removing P2P mock handler"));
+	}
+
+	MockP2PHandler = MockHandler;
+}
+
+bool FAccelByteNetworkUtilitiesModule::IsMockP2PHandlerInstalled() const
+{
+	return MockP2PHandler.IsValid();
+}
+
+TSharedPtr<IAccelByteP2PConnectionMockHandler> FAccelByteNetworkUtilitiesModule::GetMockP2PHandler()
+{
+	return MockP2PHandler;
 }
 
 #undef LOCTEXT_NAMESPACE

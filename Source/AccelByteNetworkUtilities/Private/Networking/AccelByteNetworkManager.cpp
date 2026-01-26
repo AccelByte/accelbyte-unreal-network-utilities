@@ -1,4 +1,4 @@
-// Copyright (c) 2021 AccelByte Inc. All Rights Reserved.
+// Copyright (c) 2025 AccelByte Inc. All Rights Reserved.
 // This is licensed software from AccelByte Inc, for limitations
 // and restrictions contact your company contract manager.
 
@@ -12,6 +12,7 @@
 #include "Api/AccelByteTurnManagerApi.h"
 #include "AccelByteSignalingConstants.h"
 #include "AccelByteSignalingModels.h"
+#include "AccelByteNetworkUtilities.h" // For mock handler access
 
 using namespace AccelByte::NetworkUtilities;
 
@@ -40,6 +41,32 @@ AccelByteNetworkManager& AccelByteNetworkManager::Instance()
 
 bool AccelByteNetworkManager::RequestConnect(const FString& PeerChannel)
 {
+	// Test hook: Check if mock handler is installed
+	auto MockHandler = FAccelByteNetworkUtilitiesModule::GetMockP2PHandler();
+	if (MockHandler.IsValid())
+	{
+		UE_LOG_ABNET(Log, TEXT("[MOCK] P2P connection request intercepted: %s"), *PeerChannel);
+
+		// Let mock handler decide what to do
+		bool bHandled = MockHandler->HandleConnectionRequest(
+			PeerChannel,
+			[PeerChannel](EAccelByteP2PConnectionStatus Status)
+			{
+				// Mock completes - trigger the callback that OSS is waiting for
+				AccelByteNetworkManager::Instance().TriggerConnectionComplete(PeerChannel, Status);
+			});
+
+		if (bHandled)
+		{
+			UE_LOG_ABNET(Log, TEXT("[MOCK] P2P connection handled by mock for: %s"), *PeerChannel);
+			return true; // Mock handled it, don't proceed to real P2P
+		}
+		else
+		{
+			UE_LOG_ABNET(Log, TEXT("[MOCK] Mock returned false, falling through to real P2P for: %s"), *PeerChannel);
+		}
+	}
+
 	if (PeerIdToICEConnectionMap.Contains(PeerChannel))
 	{
 		if(PeerIdToICEConnectionMap[PeerChannel]->IsConnected())
@@ -695,4 +722,21 @@ bool AccelByteNetworkManager::IsPeerConnected()
 	}
 
 	return true;
+}
+
+void AccelByteNetworkManager::TriggerConnectionComplete(const FString& PeerId,
+	const AccelByte::NetworkUtilities::EAccelByteP2PConnectionStatus& Status)
+{
+	UE_LOG_ABNET(Log, TEXT("[MOCK] Manually triggering P2P connection complete: %s, Status: %d"),
+		*PeerId, static_cast<int32>(Status));
+
+	// Trigger the registered delegate (same as real P2P would do)
+	if (OnWebRTCRequestConnectFinishedDelegate.IsBound())
+	{
+		OnWebRTCRequestConnectFinishedDelegate.Execute(PeerId, Status);
+	}
+	else
+	{
+		UE_LOG_ABNET(Warning, TEXT("[MOCK] OnWebRTCRequestConnectFinishedDelegate is not bound!"));
+	}
 }
