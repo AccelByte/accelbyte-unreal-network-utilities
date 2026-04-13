@@ -1,7 +1,8 @@
 {
   "FileVersion": 3,
+  "EngineVersion": "4.27",
   "Version": 40,
-  "VersionName": "5.0.6",
+  "VersionName": "5.0.7",
   "FriendlyName": "AccelByteNetworkUtilities",
   "Description": "Provides shared network helpers and utilities for working with AccelByte online services, including STUN/TURN.",
   "Category": "Other",
@@ -18,7 +19,17 @@
     {
       "Name": "AccelByteNetworkUtilities",
       "Type": "Runtime",
-      "LoadingPhase": "Default"
+      "LoadingPhase": "Default",
+      "PlatformAllowList": [
+        "Win64",
+        "Linux",
+        "PS4",
+        "PS5",
+        "XboxOneGDK",
+        "XSX",
+        "Switch",
+        "Mac"
+      ]
     }
   ],
   "Plugins": [

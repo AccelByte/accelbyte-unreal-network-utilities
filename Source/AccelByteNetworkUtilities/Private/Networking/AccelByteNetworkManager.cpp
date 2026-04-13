@@ -297,12 +297,12 @@ void AccelByteNetworkManager::RequestConnectWithTurnServer(const FString& PeerCh
 	FString TurnUsername;
 	if(!FAccelByteUtilities::LoadABConfigFallback(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerSecret"), TurnSecret))
 	{
-		UE_LOG_ABNET(Error, TEXT("TurnServerSecret was missing in DefaultEngine.ini or in the Command Line Arguments"));
+		UE_LOG_ABNET(Log, TEXT("TurnServerSecret is missing in DefaultEngine.ini or in the Command Line Arguments, will use dynamically created secret"));
 	}
 	if(!FAccelByteUtilities::LoadABConfigFallback(TEXT("AccelByteNetworkUtilities"), TEXT("TurnServerUsername"), TurnUsername))
 	{
 		TurnUsername = TEXT("accelbyte");
-		UE_LOG_ABNET(Warning, TEXT("TurnServerUsername was missing in DefaultEngine.ini or in the Command Line Arguments, using default username"));
+		UE_LOG_ABNET(Log, TEXT("TurnServerUsername is missing in DefaultEngine.ini or in the Command Line Arguments, will use default username"));
 	}
 
 	if(!TurnSecret.IsEmpty())
@@ -320,7 +320,8 @@ void AccelByteNetworkManager::RequestConnectWithTurnServer(const FString& PeerCh
 		TSharedPtr<AccelByteICEBase, ESPMode::ThreadSafe> Rtc = CreateNewConnection(PeerChannel);
 		PeerIdToICEConnectionMap.Add(PeerChannel, Rtc);
 		Rtc->RequestConnect(TurnServer.Ip, TurnServer.Port, Username, Password);
-	} else
+	} 
+	else
 	{
 		UE_LOG_ABNET(Log, TEXT("TURN using dynamic auth secret"));
 		RequestCredentialAndConnect(PeerChannel, TurnServer);
