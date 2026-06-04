@@ -2,7 +2,7 @@
   "FileVersion": 3,
   "EngineVersion": "4.27",
   "Version": 40,
-  "VersionName": "5.0.7",
+  "VersionName": "5.0.8",
   "FriendlyName": "AccelByteNetworkUtilities",
   "Description": "Provides shared network helpers and utilities for working with AccelByte online services, including STUN/TURN.",
   "Category": "Other",

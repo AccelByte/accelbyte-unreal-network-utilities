@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [5.0.8](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/5.0.8%0D5.0.7) (2026-06-04)
+
+
+### Documentations
+
+* added introduction doc ([4cb7112](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/4cb71122114a24f165b2314a7696c9b11d4e4728))
+
 ### [5.0.7](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/5.0.7%0D5.0.6) (2026-04-13)
 
 ### [5.0.6](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/5.0.6%0D5.0.5) (2026-03-18)
