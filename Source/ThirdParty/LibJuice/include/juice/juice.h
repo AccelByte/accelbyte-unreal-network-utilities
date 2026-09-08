@@ -101,6 +101,11 @@ typedef struct juice_config {
 
 	void *user_ptr;
 
+	// Latency-based selection (opt-in): nominate the candidate pair with the lowest measured
+	// RTT instead of the highest type-priority pair. Default (false) preserves standard ICE.
+	bool latency_based_selection;
+	int latency_selection_window_ms; // window to collect competitor RTTs; 0 = default
+
 } juice_config_t;
 
 JUICE_EXPORT juice_agent_t *juice_create(const juice_config_t *config);
@@ -118,6 +123,17 @@ JUICE_EXPORT int juice_get_selected_candidates(juice_agent_t *agent, char *local
                                                char *remote, size_t remote_size);
 JUICE_EXPORT int juice_get_selected_addresses(juice_agent_t *agent, char *local, size_t local_size,
                                               char *remote, size_t remote_size);
+
+// Connection-quality stats for the selected candidate pair (latency-based selection).
+typedef struct juice_selected_stats {
+	int rtt_ms;          // EWMA RTT of the selected pair in ms; -1 if unmeasured
+	int loss_percent;    // measured packet loss %; -1 if no probes were sent
+	int probes_sent;     // measurement probes sent (sample size)
+	int probes_received; // probe responses received
+} juice_selected_stats_t;
+
+JUICE_EXPORT int juice_get_selected_stats(juice_agent_t *agent, juice_selected_stats_t *stats);
+
 JUICE_EXPORT const char *juice_state_to_string(juice_state_t state);
 
 // ICE server

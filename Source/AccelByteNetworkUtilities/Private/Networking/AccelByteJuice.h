@@ -91,6 +91,8 @@ public:
 	 */
 	virtual void SimulateNetworkSwitching() override;
 
+	virtual bool GetConnectionStats(FAccelByteP2PConnectionStats& OutStats) const override;
+
 private:
 	// instance of the Juice agent, will handle the ICE connection
 	juice_agent_t *JuiceAgent = nullptr;
@@ -98,6 +100,11 @@ private:
 	juice_config_t JuiceConfig;
 
 	bool bIsForceIceUsingRelay = false;
+
+	// Latency/loss-aware candidate selection (opt-in via [AccelByteNetworkUtilities]
+	// UseLatencyBasedSelection / LatencySelectionWindowMs). Off = stock ICE behavior.
+	bool bUseLatencyBasedSelection = false;
+	int32 LatencySelectionWindowMs = 0; // 0 = libjuice default window
 
 	FCriticalSection DescriptionReadyMutex;
 	/*

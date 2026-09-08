@@ -79,6 +79,19 @@ public:
 	void CloseAllICEConnection();
 
 	/**
+	 * @brief Get measured RTT/loss of the selected P2P path for a peer.
+	 *
+	 * Populated only when latency-based selection is enabled ([AccelByteNetworkUtilities]
+	 * UseLatencyBasedSelection). With it off (or before a path is chosen) the stats fields are
+	 * -1 / 0; check OutStats.HasMeasurement().
+	 *
+	 * @param PeerChannel peer id (with channel) of the connection
+	 * @param OutStats filled with the measured stats
+	 * @return true if a connection to PeerChannel exists and a path has been selected
+	 */
+	bool GetConnectionStats(const FString& PeerChannel, FAccelByteP2PConnectionStats& OutStats);
+
+	/**
 	* @brief To use P2P feature, need to setup the default socket subsystem to accelbyte.
 	*/
 	void RegisterDefaultSocketSubsystem();

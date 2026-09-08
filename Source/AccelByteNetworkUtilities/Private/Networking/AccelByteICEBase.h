@@ -184,6 +184,15 @@ public:
 	 */
 	virtual void SimulateNetworkSwitching() = 0;
 
+	/**
+	 * @brief Measured quality (RTT/loss) of the selected path for this connection. Populated only
+	 *        when latency-based selection is enabled; default implementation reports no stats.
+	 *
+	 * @param OutStats filled with the measured stats on success
+	 * @return true if stats are available
+	 */
+	virtual bool GetConnectionStats(FAccelByteP2PConnectionStats& OutStats) const { return false; }
+
 protected:
 	/*
 	 * Handle all signaling message for exchange information about ICE candidates, ICE description

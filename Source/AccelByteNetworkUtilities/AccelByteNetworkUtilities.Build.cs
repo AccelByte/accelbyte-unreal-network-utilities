@@ -29,14 +29,23 @@ public class AccelByteNetworkUtilities : ModuleRules
 		
 		/*
 		 * LibJuice is library that handle the nat punch connection.
+		 *
+		 * Linux is gated to UE5+. The prebuilt linux64/libjuice.so is built against
+		 * GLIBC 2.34, which the toolchain bundled with 4.27 cannot link:
+		 *   ld.lld: error: libjuice.so: undefined reference to pthread_create@GLIBC_2.34
+		 * Keep this in step with the matching gate in LibJuice.Build.cs, and drop both
+		 * once the .so is rebuilt against an older glibc.
 		 */
-		if (PlatformString == "WIN64" || 
+		bool bLibJuiceLinuxSupported = PlatformString == "LINUX" && Target.Version.MajorVersion >= 5;
+
+		if (PlatformString == "WIN64" ||
 		    PlatformString == "XBOXONEGDK" ||
+		    PlatformString == "XB1" ||
 		    PlatformString == "XSX" ||
 		    PlatformString == "PS4" ||
 		    PlatformString == "PS5" ||
 		    PlatformString == "SWITCH" ||
-		    PlatformString == "LINUX" ||
+		    bLibJuiceLinuxSupported ||
 		    PlatformString == "MAC")
 		{
 			PrivateDefinitions.Add("LIBJUICE");

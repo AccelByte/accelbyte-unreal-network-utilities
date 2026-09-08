@@ -33,7 +33,7 @@ public class LibJuice : ModuleRules
 			}
 			PublicSystemLibraries.Add("bcrypt.lib");
 		}
-        else if (PlatformString == "XBOXONEGDK")
+        else if (PlatformString == "XBOXONEGDK" || PlatformString == "XB1")
 		{
 			PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "include"));
 			if (Target.Configuration == UnrealTargetConfiguration.Debug ||
@@ -109,20 +109,31 @@ public class LibJuice : ModuleRules
 		}
 		else if (PlatformString == "LINUX")
 		{
-			PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "include"));
-			if (Target.Configuration == UnrealTargetConfiguration.Debug ||
-			    Target.Configuration == UnrealTargetConfiguration.Development ||
-			    Target.Configuration == UnrealTargetConfiguration.DebugGame)
+			/*
+			 * UE5+ only. The prebuilt linux64/libjuice.so is built against GLIBC 2.34,
+			 * which the toolchain bundled with 4.27 cannot link:
+			 *   ld.lld: error: libjuice.so: undefined reference to pthread_create@GLIBC_2.34
+			 * Linking it there fails the whole Linux packaging stage. Keep this in step
+			 * with the matching gate in AccelByteNetworkUtilities.Build.cs, and drop both
+			 * once the .so is rebuilt against an older glibc.
+			 */
+			if (Target.Version.MajorVersion >= 5)
 			{
-				RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "linux64/debug/libjuice.so"));
-				PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "linux64/debug/libjuice.so"));
+				PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "include"));
+				if (Target.Configuration == UnrealTargetConfiguration.Debug ||
+				    Target.Configuration == UnrealTargetConfiguration.Development ||
+				    Target.Configuration == UnrealTargetConfiguration.DebugGame)
+				{
+					RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "linux64/debug/libjuice.so"));
+					PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "linux64/debug/libjuice.so"));
+				}
+				else
+				{
+					RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "linux64/release/libjuice.so"));
+					PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "linux64/release/libjuice.so"));
+				}
+				PublicDelayLoadDLLs.Add("libjuice.so");
 			}
-			else
-			{
-				RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "linux64/release/libjuice.so"));
-				PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "linux64/release/libjuice.so"));
-			}
-			PublicDelayLoadDLLs.Add("libjuice.so");
 		}
 		else if (PlatformString == "MAC")
 		{

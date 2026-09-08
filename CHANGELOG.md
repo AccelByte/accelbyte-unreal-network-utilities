@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [5.1.0](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/5.1.0%0D5.0.8) (2026-09-08)
+
+
+### Features
+
+* **p2p:** GetConnectionStats C++ API to read selected-path RTT/loss (module -> manager -> ICE) ([e89cd4b](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/e89cd4b78be16b52441620cbd05b6836c4e56605))
+* **p2p:** integrate latency/loss-aware selection (patched libjuice) + config flag + RTT/loss telemetry at COMPLETED ([c76c231](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/c76c2316ee1fcd6f7bddaa567d4542c34a8c2ced))
+
+
+### Bug Fixes
+
+* **p2p:** address code review — gate stats calls on Linux/Mac (unbuilt libs), short-circuit GetConnectionStats when disabled, config-fallback logs, enum-order static_assert, peer id in path-finalized logs ([8b246ef](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/8b246ef2873d1983255ffe58988aceb212e66b3a))
+* **p2p:** derive connection type from both local and remote candidates so relayed pairs are not mislabeled ([f455dd5](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/f455dd599d9d6e176fc03db14660ea2cd97358ac))
+* **p2p:** gate Linux libjuice to UE5+ so 4.27 stops failing to link GLIBC 2.34 symbols ([1041737](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/104173766b3f73b048972e6caba9e8125fb1a7a1))
+* **p2p:** pass ESPMode::ThreadSafe when creating the null ICE connection ([20e96f7](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/20e96f7f46c29733de4bc5135b534b9bc71178fa))
+* **p2p:** rebuild Linux libjuice with the patch and un-gate Linux (Mac stays gated pending its rebuild) ([bd3f261](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/bd3f261f1bd8e98cf006f0f6bdca9a935ba87a77))
+* **p2p:** rebuild Mac libjuice with the patch and un-gate Mac (all platforms now expose juice_get_selected_stats) ([43ed9e5](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/43ed9e5a42512609d85e8a29b22dcfa9ffb395c2))
+* recognize Xbox One platform name XB1 (UE renamed XboxOneGDK) for libjuice link, LIBJUICE define, and uplugin allowlist ([6765535](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/commits/67655354f5543bbadf4682567d7ac6d4b5a10d99))
+
 ### [5.0.8](https://bitbucket.org/accelbyte/justice-ue4-network-utilities-plugin/branches/compare/5.0.8%0D5.0.7) (2026-06-04)
 
 

@@ -72,6 +72,17 @@ AccelByteJuice::AccelByteJuice(const FString& PeerId): AccelByteICEBase(PeerId)
 	{
 		UE_LOG_ABNET(Log, TEXT("Using default PeerLastActivityTickerIntervalInSeconds (%f seconds) because its missing from DefaultEngine.ini"), PeerLastActivityTickerIntervalInSeconds);
 	}
+
+	if (!GConfig->GetBool(TEXT("AccelByteNetworkUtilities"), TEXT("UseLatencyBasedSelection"), bUseLatencyBasedSelection, GEngineIni))
+	{
+		UE_LOG_ABNET(Log, TEXT("UseLatencyBasedSelection missing from DefaultEngine.ini, defaulting to disabled"));
+	}
+	if (!GConfig->GetInt(TEXT("AccelByteNetworkUtilities"), TEXT("LatencySelectionWindowMs"), LatencySelectionWindowMs, GEngineIni))
+	{
+		UE_LOG_ABNET(Log, TEXT("LatencySelectionWindowMs missing from DefaultEngine.ini, using default (%d ms)"), LatencySelectionWindowMs);
+	}
+	UE_LOG_ABNET(Log, TEXT("Latency-based candidate selection: %s (window %d ms)"),
+		bUseLatencyBasedSelection ? TEXT("ENABLED") : TEXT("disabled"), LatencySelectionWindowMs);
 }
 
 AccelByteJuice::~AccelByteJuice()
@@ -193,6 +204,8 @@ void AccelByteJuice::CreatePeerConnection(const FString& Host, const FString &Us
 	JuiceConfig.turn_servers = TurnServerConfig;
 	JuiceConfig.turn_servers_count = 1;
 	JuiceConfig.user_ptr = this;
+	JuiceConfig.latency_based_selection = bUseLatencyBasedSelection;
+	JuiceConfig.latency_selection_window_ms = LatencySelectionWindowMs;
 #if (defined(PLATFORM_PS4) && PLATFORM_PS4) || (defined(PLATFORM_PS5) && PLATFORM_PS5)
 	// Bind any port not working on PS4, but it works when the bind port is set to 10000-10100
 	JuiceConfig.local_port_range_begin = 10000;
@@ -413,6 +426,25 @@ void AccelByteJuice::JuiceStateChanged(juice_state_t State)
 	{
 		OnICEDataChannelClosedDelegate.ExecuteIfBound(PeerChannel);
 	}
+	else if(State == JUICE_STATE_COMPLETED)
+	{
+		// Latency-based selection finalizes the chosen pair at window close (COMPLETED), which may
+		// differ from the first-connected pair. Log the final connection type + measured RTT/loss
+		// for diagnostics (telemetry).
+		const EP2PConnectionType FinalType = GetP2PConnectionType();
+		juice_selected_stats_t Stats;
+		if (juice_get_selected_stats(JuiceAgent, &Stats) == JUICE_ERR_SUCCESS && Stats.rtt_ms >= 0)
+		{
+			UE_LOG_ABNET(Log, TEXT("P2P path finalized for %s: type=%s rtt=%dms loss=%d%% (probes %d/%d)"),
+				*PeerChannel, *UEnum::GetValueAsString(FinalType), Stats.rtt_ms, Stats.loss_percent,
+				Stats.probes_received, Stats.probes_sent);
+		}
+		else
+		{
+			UE_LOG_ABNET(Log, TEXT("P2P path finalized for %s: type=%s (latency stats unavailable)"),
+				*PeerChannel, *UEnum::GetValueAsString(FinalType));
+		}
+	}
 	if(LastJuiceState == JUICE_STATE_CONNECTING && (State == JUICE_STATE_FAILED || State == JUICE_STATE_COMPLETED || State == JUICE_STATE_DISCONNECTED))
 	{
 		UE_LOG_ABNET(Error, TEXT("please double check your TurnServerSecret, make sure it has the correct value, config located at .ini file under [AccelByteNetworkUtilities] path"));
@@ -480,30 +512,63 @@ EP2PConnectionType AccelByteJuice::GetP2PConnectionType() const
 	juice_get_selected_candidates(
 		JuiceAgent, LocalCandidate, MAX_ADDRESS_LENGTH, RemoteCandidate, MAX_ADDRESS_LENGTH);
 
-	// The connection type of remote and local candidates are the same, selected remote candidate used here
-	const FString Candidate = FString(RemoteCandidate);
-	EP2PConnectionType SelectedCandidateType = EP2PConnectionType::None;
-	
-	if (Candidate.Contains(TEXT("typ host")))
+	// A candidate pair has independent local and remote candidate types (e.g. a relay pair is
+	// local=relay paired with the peer's remote=host/srflx/prflx). The connection is only as
+	// "direct" as its least-direct leg, so classify BOTH candidates and report the higher-
+	// indirection one. Inspecting the remote alone (as before) mislabels a relayed connection as
+	// host/srflx/prflx whenever the relay is on our local side.
+	auto ClassifyCandidate = [](const FString& Candidate) -> EP2PConnectionType
 	{
-		SelectedCandidateType = EP2PConnectionType::Host;
-	}
-	else if (Candidate.Contains(TEXT("typ srflx")))
-	{
-		SelectedCandidateType = EP2PConnectionType::Srflx;
-	}
-	else if (Candidate.Contains(TEXT("typ prflx")))
-	{
-		SelectedCandidateType = EP2PConnectionType::Prflx;
-	}
-	else if (Candidate.Contains(TEXT("typ relay")))
-	{
-		SelectedCandidateType = EP2PConnectionType::Relay;
-	}
+		if (Candidate.Contains(TEXT("typ relay"))) return EP2PConnectionType::Relay;
+		if (Candidate.Contains(TEXT("typ prflx"))) return EP2PConnectionType::Prflx;
+		if (Candidate.Contains(TEXT("typ srflx"))) return EP2PConnectionType::Srflx;
+		if (Candidate.Contains(TEXT("typ host")))  return EP2PConnectionType::Host;
+		return EP2PConnectionType::None;
+	};
 
-	UE_LOG_ABNET(Log, TEXT("Connection type: %s"), *UEnum::GetValueAsString(SelectedCandidateType));
+	const EP2PConnectionType LocalType = ClassifyCandidate(FString(LocalCandidate));
+	const EP2PConnectionType RemoteType = ClassifyCandidate(FString(RemoteCandidate));
+
+	// Enum order is None < Host < Srflx < Prflx < Relay (increasing indirection), so the
+	// less-direct leg is the larger value. Guard that ordering so a future reorder can't silently
+	// break relay detection.
+	static_assert(
+		static_cast<uint8>(EP2PConnectionType::None)  < static_cast<uint8>(EP2PConnectionType::Host)  &&
+		static_cast<uint8>(EP2PConnectionType::Host)  < static_cast<uint8>(EP2PConnectionType::Srflx) &&
+		static_cast<uint8>(EP2PConnectionType::Srflx) < static_cast<uint8>(EP2PConnectionType::Prflx) &&
+		static_cast<uint8>(EP2PConnectionType::Prflx) < static_cast<uint8>(EP2PConnectionType::Relay),
+		"GetP2PConnectionType() relies on this EP2PConnectionType ordering (increasing indirection)");
+	const EP2PConnectionType SelectedCandidateType =
+		static_cast<uint8>(LocalType) >= static_cast<uint8>(RemoteType) ? LocalType : RemoteType;
+
+	UE_LOG_ABNET(Log, TEXT("Connection type: %s (local: %s, remote: %s)"),
+		*UEnum::GetValueAsString(SelectedCandidateType),
+		*UEnum::GetValueAsString(LocalType),
+		*UEnum::GetValueAsString(RemoteType));
 
 	return SelectedCandidateType;
+}
+
+bool AccelByteJuice::GetConnectionStats(FAccelByteP2PConnectionStats& OutStats) const
+{
+	// Measurements only exist when latency-based selection is on (otherwise no probes are sent).
+	// Short-circuit here rather than rely on the native library to report "unmeasured".
+	if (JuiceAgent == nullptr || !bUseLatencyBasedSelection)
+	{
+		return false;
+	}
+
+	juice_selected_stats_t Stats;
+	if (juice_get_selected_stats(JuiceAgent, &Stats) != JUICE_ERR_SUCCESS)
+	{
+		return false;
+	}
+
+	OutStats.RttMs = Stats.rtt_ms;
+	OutStats.LossPercent = Stats.loss_percent;
+	OutStats.ProbesSent = Stats.probes_sent;
+	OutStats.ProbesReceived = Stats.probes_received;
+	return true;
 }
 
 bool AccelByteJuice::HostInitialCheckTick(float DeltaTime)

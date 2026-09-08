@@ -108,6 +108,11 @@ void FAccelByteNetworkUtilitiesModule::CloseAllICEConnection()
 	AccelByteNetworkManager::Instance().CloseAllPeerConnections();
 }
 
+bool FAccelByteNetworkUtilitiesModule::GetConnectionStats(const FString& PeerChannel, FAccelByteP2PConnectionStats& OutStats)
+{
+	return AccelByteNetworkManager::Instance().GetConnectionStats(PeerChannel, OutStats);
+}
+
 void FAccelByteNetworkUtilitiesModule::RegisterDefaultSocketSubsystem()
 {
 	FSocketSubsystemModule& SSS = FModuleManager::LoadModuleChecked<FSocketSubsystemModule>("Sockets");

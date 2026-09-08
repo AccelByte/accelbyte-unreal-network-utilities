@@ -261,6 +261,22 @@ void AccelByteNetworkManager::ClosePeerConnection(const FString& PeerId)
 	}
 }
 
+bool AccelByteNetworkManager::GetConnectionStats(const FString& PeerChannel, FAccelByteP2PConnectionStats& OutStats)
+{
+	// Copy the connection ptr under the lock, then query outside it: GetConnectionStats() takes
+	// libjuice's internal lock and juice callbacks acquire LockObject on the way up, so holding
+	// LockObject across the juice call could invert lock order.
+	TSharedPtr<AccelByteICEBase, ESPMode::ThreadSafe> Rtc;
+	{
+		FScopeLock ScopeLock(&LockObject);
+		if (const TSharedPtr<AccelByteICEBase, ESPMode::ThreadSafe>* Found = PeerIdToICEConnectionMap.Find(PeerChannel))
+		{
+			Rtc = *Found;
+		}
+	}
+	return Rtc.IsValid() && Rtc->GetConnectionStats(OutStats);
+}
+
 void AccelByteNetworkManager::CloseAllPeerConnections()
 {
 	TArray<TSharedPtr<AccelByteICEBase, ESPMode::ThreadSafe>> ToDestroy;
@@ -408,7 +424,9 @@ TSharedPtr<AccelByteICEBase, ESPMode::ThreadSafe> AccelByteNetworkManager::Creat
 #ifdef LIBJUICE
 	TSharedPtr<AccelByteICEBase, ESPMode::ThreadSafe> Rtc = MakeShared<AccelByteJuice, ESPMode::ThreadSafe>(PeerChannel);
 #else
-	TSharedPtr<AccelByteICEBase, ESPMode::ThreadSafe> Rtc = MakeShared<AccelByteNullICEConnection>(PeerChannel);
+	// ESPMode::ThreadSafe is required: MakeShared defaults to ESPMode::Fast, which will not
+	// convert to the ThreadSafe TSharedPtr this function returns.
+	TSharedPtr<AccelByteICEBase, ESPMode::ThreadSafe> Rtc = MakeShared<AccelByteNullICEConnection, ESPMode::ThreadSafe>(PeerChannel);
 #endif
 	Rtc->SetSignaling(Signaling);
 	Rtc->SetOnICEDataChannelConnectedDelegate(AccelByteICEBase::OnICEDataChannelConnected::CreateRaw(this, &AccelByteNetworkManager::RTCConnected));

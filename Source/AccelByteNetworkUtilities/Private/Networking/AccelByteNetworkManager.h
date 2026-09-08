@@ -141,6 +141,15 @@ public:
 	bool IsPeerConnected();
 
 	/**
+	 * @brief Get measured RTT/loss of the selected P2P path for a peer (latency-based selection).
+	 *
+	 * @param PeerChannel peer id (with channel) of the connection
+	 * @param OutStats filled with the measured stats on success
+	 * @return true if a connection exists and stats are available
+	 */
+	bool GetConnectionStats(const FString& PeerChannel, FAccelByteP2PConnectionStats& OutStats);
+
+	/**
 	 * @brief FOR TESTING ONLY: Manually trigger connection complete callback
 	 *
 	 * Used by mock handler to simulate P2P connection completion without
